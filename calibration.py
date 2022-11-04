@@ -60,24 +60,49 @@ initializers = {
     },
 }
 
-calibration_results = {}
-for key, initializer in initializers.items():
-    calibration_results[key] = model.calibrate_and_save(
-        key,
-        initializer,
-        adaptive_optimizer_initialization=adaptive_optimizer_initialization,
-        verbose=verbose,
-    )
-    solution = model.get_calibrated_model_solution(key, initializers[key])
-    calibration_results[key]["y"] = np.append(
-        calibration_results[key]["x"], solution[:-1]
-    )
-    initializer["tw"] = solution[0]
-    initializer["sf"] = solution[1]
-    initializer["sm"] = solution[2]
+calibration_modes = [
+    "abs-schooling",
+    "abs-schooling-no-wages",
+    "abs-schooling-scl-wages",
+    "base",
+    "no-schooling",
+    "no-schooling-scl-wages",
+    "no-wages",
+    # "no-income-no-wages",
+]
 
-print(f"| group  | {' | '.join([f'{key:7}' for key in initializers['low'].keys()])} |")
-for key, initializer in initializers.items():
-    masks = [f"{{:>7.4f}}" for _ in initializers["low"].keys()]
-    values = [masks[k].format(v) for k, v in enumerate(calibration_results[key]["y"])]
-    print(f"| {key:6} | {' | '.join(values)} |")
+output = {}
+for calibration_mode in calibration_modes:
+    output[calibration_mode] = {}
+    calibration_results = {}
+    for key, initializer in initializers.items():
+        if calibration_mode == "no-income-no-wages":
+            del initializer["hat_c"]
+        calibration_results[key] = model.calibrate_if_not_exists_and_save(
+            calibration_mode,
+            key,
+            initializer,
+            adaptive_optimizer_initialization=adaptive_optimizer_initialization,
+            verbose=verbose,
+        )
+        filename = f"../data/out/{calibration_mode}/{key}_income_calibration.pkl"
+        solved_model = model.get_calibrated_model_solution(
+            key, filename, initializers[key].keys()
+        )
+        output[calibration_mode][key] = {
+            "values": np.append(
+                calibration_results[key]["x"], solved_model["optimizer"]["x0"]
+            ),
+            "initializer": [*initializer.keys(), "tw", "sf", "sm"],
+        }
+
+for calibration_mode, calibration_results in output.items():
+    print(f"calibration_mode = {calibration_mode}")
+    names = calibration_results["all"]["initializer"]
+    print(f"| group  | {' | '.join([f'{key:7}' for key in names])} |")
+    for key, initializer in initializers.items():
+        masks = [f"{{:>7.4f}}" for _ in names]
+        values = [
+            masks[k].format(v) for k, v in enumerate(calibration_results[key]["values"])
+        ]
+        print(f"| {key:6} | {' | '.join(values)} |")

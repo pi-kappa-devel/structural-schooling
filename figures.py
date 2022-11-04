@@ -11,6 +11,9 @@ Solver file for Why does the Schooling Gap Close when the Wage Gap Remains Const
 import numpy as np
 import matplotlib.pyplot as plt
 import model
+from math import pi
+import functools
+
 from importlib import reload
 
 model = reload(model)
@@ -23,6 +26,31 @@ fcolor = "blue"
 mcolor = "orange"
 format_strings = ["c-", "g--", "r-.", "k:", "m.-"]
 markersize = 4.0
+
+income_groups = ["low", "middle", "high", "all"]
+calibration_modes = [
+    "abs-schooling",
+    "abs-schooling-no-wages",
+    "abs-schooling-scl-wages",
+    "base",
+    "no-schooling",
+    "no-schooling-scl-wages",
+    "no-wages",
+    # "no-income-no-wages",
+]
+main_income_group = "all"
+main_calibration_mode = "abs-schooling-no-wages"
+
+initializer_names = [
+    "hat_c",
+    "varphi",
+    "beta_f",
+    "Z_ArAh",
+    "Z_MrMh",
+    "Z_SrSh",
+    "Z_ArSr",
+    "Z_MrSr",
+]
 
 
 def make_relative_expenditure_of_share(income_group, initializers, gender, over, under):
@@ -416,7 +444,6 @@ def make_production_share_figure(income_group, initializers):
 
     x = np.linspace(0.15, 0.8, 50, endpoint=True)
     xlabel = "$\\xi^{f}_{Sr}$"
-    xpoint = data["fixed"]["xi_Sr"]
     plt.figure()
     linestyles = dict(zip(relative_expenditures.keys(), format_strings))
 
@@ -515,7 +542,7 @@ def make_production_scale_figure(income_group, initializers, initial_productivit
             if f"Z_{index}Sr" in data["calibrated"].keys()
         ]
     )
-    x = np.linspace(np.max((1.2 * xpoint, 0.3)), 35.0 * xpoint, 50, endpoint=True)
+    x = np.linspace(np.max((0.9 * xpoint, 0.3)), 5.0 * xpoint, 50, endpoint=True)
     plt.figure()
     linestyles = dict(zip(relative_expenditures.keys(), format_strings))
 
@@ -568,18 +595,184 @@ def make_production_scale_figure(income_group, initializers, initial_productivit
     plt.close()
 
 
-income_group = "all"
-initializers = {
-    "hat_c": 5.748493884,
-    "varphi": 3.391829732,
-    "beta_f": 0.177428715,
-    "Z_ArAh": 0.135479539,
-    "Z_MrMh": 2.175251708,
-    "Z_SrSh": 0.166055022,
-    "Z_ArSr": 0.173499618,
-    "Z_MrSr": 2.337050273,
-}
-make_production_share_figure(income_group, initializers)
+def make_labor_radar_figure(calibration_mode, income_group, initializers):
+    filename = f"../data/out/{calibration_mode}/{income_group}_income_calibration.pkl"
+    solution = model.get_calibrated_model_solution(
+        income_group, filename, initializers.keys()
+    )
+
+    # fmt: off
+    data_female_labor_shares = {
+      "low": [0.0815877, 0.0062807, 0.2938025, 0.0215187, 0.0126192, 0.0363058, 0.5478855],
+      "middle": [0.0281231, 0.0037166, 0.2975294, 0.0047409, 0.0191781, 0.0787491, 0.5679629],
+      "high": [0.0042724, 0.0009837, 0.2389524, 0.0023376, 0.0223466, 0.1015646, 0.6295427],
+      "all": [0.0379944, 0.003660333, 0.276761433, 0.0095324, 0.018047967, 0.0722065, 0.581797033]
+    }
+    # fmt: on
+
+    controls = {}
+    for technology in solution["technologies"]:
+        for sector in solution["sectors"]:
+            index = f"{sector}{technology}"
+            Lis = model.make_female_time_allocation_control(solution, index)(
+                *solution["optimizer"]["x0"]
+            )
+            controls[f"$L_{{{index}}}$"] = Lis
+    controls["$\\ell$"] = model.make_female_time_allocation_control(solution, "l")(
+        *solution["optimizer"]["x0"]
+    )
+
+    M = np.max(list(controls.values()) + data_female_labor_shares[income_group])
+
+    plt.figure()
+    N = len(controls)
+    angles = [n / float(N) * 2 * pi for n in range(N)]
+    angles += angles[:1]
+    ax = plt.subplot(111, polar=True)
+    ax.set_theta_offset(pi / 2)
+    ax.set_theta_direction(-1)
+    plt.xticks(angles[:-1], controls.keys())
+    ax.set_rlabel_position(0)
+    yticks = [0.25 * M, 0.5 * M, 0.75 * M, M]
+    plt.yticks(yticks, [f"{tick:.2}" for tick in yticks], color="grey", size=7)
+    plt.ylim(0, M)
+    values = list(controls.values())
+    values += values[:1]
+    ax.plot(angles, values, linewidth=1, linestyle="solid", label="Model")
+    ax.fill(angles, values, "b", alpha=0.1)
+
+    values = data_female_labor_shares[income_group]
+    values += values[:1]
+    ax.plot(angles, values, linewidth=1, linestyle="solid", label="Data")
+    ax.fill(angles, values, "r", alpha=0.1)
+
+    plt.legend(loc="upper right", bbox_to_anchor=(0.1, 0.1)).get_frame().set_alpha(0.0)
+    filename = f"../text/manuscript/fig/radar_{calibration_mode}_{income_group}.png"
+    plt.savefig(filename, dpi=600, transparent=True)
+    plt.close()
+
+
+def make_labor_lollipop_figure(calibration_mode, initializers):
+    # fmt: off
+    data_female_labor_shares = {
+      "low": [0.0815877, 0.0062807, 0.2938025, 0.0215187, 0.0126192, 0.0363058, 0.5478855],
+      "middle": [0.0281231, 0.0037166, 0.2975294, 0.0047409, 0.0191781, 0.0787491, 0.5679629],
+      "high": [0.0042724, 0.0009837, 0.2389524, 0.0023376, 0.0223466, 0.1015646, 0.6295427],
+      "all": [0.0379944, 0.003660333, 0.276761433, 0.0095324, 0.018047967, 0.0722065, 0.581797033]
+    }
+    data_male_labor_shares = {
+        "low": [0.0899835, 0.0075116, 0.1265374, 0.0434648, 0.0262223, 0.0810602, 0.6252202],
+        "middle": [0.0446018, 0.0058335, 0.1007717, 0.0289257, 0.0493341, 0.1208478, 0.6496854],
+        "high": [0.0076562, 0.0060439, 0.0976458, 0.0078905, 0.0785629, 0.1149185, 0.6872821],
+        "all": [0.047413833, 0.006463, 0.1083183, 0.026760333, 0.0513731, 0.105608833, 0.654062567]
+    }
+    # fmt: on
+
+    controls = {}
+    for income_group in income_groups:
+        controls[income_group] = {}
+        filename = (
+            f"../data/out/{calibration_mode}/{income_group}_income_calibration.pkl"
+        )
+        solution = model.get_calibrated_model_solution(
+            income_group, filename, initializers.keys()
+        )
+
+        for technology in solution["technologies"]:
+            for sector in solution["sectors"]:
+                index = f"{sector}{technology}"
+                controls[income_group][
+                    f"$L^{{f}}_{{{index}}}$"
+                ] = model.make_female_time_allocation_control(solution, index)(
+                    *solution["optimizer"]["x0"]
+                )
+
+        controls[income_group][""] = None
+        controls[income_group]["$M^{{f}}$"] = sum(
+            list(controls[income_group].values())[:-1]
+        )
+        controls[income_group][
+            "$\\ell^{{f}}$"
+        ] = model.make_female_time_allocation_control(solution, "l")(
+            *solution["optimizer"]["x0"]
+        )
+        controls[income_group][
+            "$M^{{m}}$"
+        ] = 1 - model.make_male_time_allocation_control(solution, "l")(
+            *solution["optimizer"]["x0"]
+        )
+        controls[income_group][
+            "$\\ell^{{m}}$"
+        ] = model.make_male_time_allocation_control(solution, "l")(
+            *solution["optimizer"]["x0"]
+        )
+
+    labels = functools.reduce(
+        lambda l, r: l + ["", ""] + r,
+        [list(controls[income_group].keys()) for income_group in income_groups],
+    )
+    model_values = functools.reduce(
+        lambda l, r: l + [None, None] + r,
+        [list(controls[income_group].values()) for income_group in income_groups],
+    )
+    data_values = functools.reduce(
+        lambda l, r: l + [None, None] + r,
+        [
+            [
+                *v[:-1],
+                None,
+                sum(v[:-1]),
+                *v[-1:],
+                sum(data_male_labor_shares[k][:-1]),
+                data_male_labor_shares[k][-1],
+            ]
+            for k, v in data_female_labor_shares.items()
+        ],
+    )
+
+    plt.figure()
+    markerline, stemlines, baseline = plt.stem(
+        range(len(labels)), model_values, markerfmt="bo", label="Model"
+    )
+    plt.setp(baseline, visible=False)
+
+    markerline, stemlines, baseline = plt.stem(
+        range(len(labels)), data_values, markerfmt="rx", label="Data"
+    )
+    plt.setp(baseline, visible=False)
+    plt.setp(stemlines, "color", plt.getp(markerline, "color"))
+    plt.setp(stemlines, "linestyle", "dotted")
+
+    plt.xticks(range(len(labels)), labels, rotation="vertical", fontsize=6)
+    plt.legend().get_frame().set_alpha(0.0)
+    plt.xlabel(
+        functools.reduce(
+            lambda l, r: l + " " * 25 + r, [ig.capitalize() for ig in income_groups]
+        )
+    )
+
+    filename = f"../text/manuscript/fig/lollipop_{calibration_mode}.png"
+    plt.savefig(filename, dpi=600, transparent=True)
+    plt.close()
+
+
+filename = (
+    f"../data/out/{main_calibration_mode}/{main_income_group}_income_calibration.pkl"
+)
+solution = model.get_calibrated_model_solution(
+    main_income_group, filename, initializer_names
+)
+initializers = {k: v[0] for k, v in solution["calibrated"].items()}
+
+
+for calibration_mode in calibration_modes:
+    print(f"calibration_mode = {calibration_mode}")
+    for income_group in income_groups:
+        print(f"income_group = {income_group}")
+        # make_labor_radar_figure(calibration_mode, income_group, initializers)
+    make_labor_lollipop_figure(calibration_mode, initializers)
+
+make_production_share_figure(main_income_group, initializers)
 
 initial_productivities = {
     "Z_AhSr": 35.49054302,
@@ -588,38 +781,4 @@ initial_productivities = {
     "Z_ArSr": 4.299917852,
     "Z_MrSr": 14.51415889,
 }
-make_production_scale_figure(income_group, initializers, initial_productivities)
-
-# g = np.zeros((6, 6))
-# g[0, 3] = g[3, 0] = 1
-# g[1, 4] = g[4, 1] = 1
-# g[2, 5] = g[5, 2] = 1
-# g[3, 5] = g[5, 3] = 1
-# g[4, 5] = g[5, 4] = 1
-# print(f"g = \n{g}")
-
-# v0 = np.zeros(6)
-# v0[0] = 1
-# print(f"v0 = {v0}")
-# v = v0.copy()
-# print(f"v = {v}")
-
-# v1 = np.inner(g, v0)
-# print(f"v1 = {v1}")
-# v = (v == 1) | (v1 == 1)
-# print(f"v = {v}")
-
-# v2 = np.inner(g, v1)
-# print(f"v2 = {v2}")
-# v = (v == 1) | (v2 == 1)
-# print(f"v = {v}")
-
-# v3 = np.inner(g, v2)
-# print(f"v3 = {v3}")
-# v = (v == 1) | (v3 == 1)
-# print(f"v = {v}")
-
-# v4 = np.inner(g, v3)
-# print(f"v4 = {v4}")
-# v = (v == 1) | (v4 == 1)
-# print(f"v = {v}")
+make_production_scale_figure(main_income_group, initializers, initial_productivities)

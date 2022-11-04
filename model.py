@@ -1329,7 +1329,7 @@ def make_calibration(
 
 def save_calibration_if_not_exists(filename, calibration_results):
     """Save Calibrated Model."""
-    
+
     if not exists(filename):
         fh = open(filename, "wb")
         pickle.dump(calibration_results, fh)
@@ -1340,15 +1340,19 @@ def save_calibration_if_not_exists(filename, calibration_results):
 
 def load_calibration(filename):
     """Load Saved Calibrated Model."""
-    
+
     fh = open(filename, "rb")
     calibration_results = pickle.load(fh)
     fh.close()
     return calibration_results
 
 
-def calibrate_and_save(
-    income_group, initializers, adaptive_optimizer_initialization=False, verbose=False
+def calibrate_if_not_exists_and_save(
+    calibration_mode,
+    income_group,
+    initializers,
+    adaptive_optimizer_initialization=False,
+    verbose=False,
 ):
     """Calibrate the Model and Save the Results."""
 
@@ -1367,14 +1371,14 @@ def calibrate_and_save(
     bounds = get_calibration_bounds(model_data, initializers.keys())
     calibration_results = {}
 
-    filename = f"../data/out/{income_group}_calibration.pkl"
+    filename = f"../data/out/{calibration_mode}/{income_group}_income_calibration.pkl"
     if not exists(filename):
         calibration_results = minimize(
             lambda x: sum(errors(x)),
             [v for v in initializers.values()],
             bounds=bounds,
             method="Nelder-Mead",
-            options={"gtol": 1e-2, "disp": True},
+            options={"disp": True},
         )
         save_calibration_if_not_exists(filename, calibration_results)
     else:
@@ -1383,13 +1387,12 @@ def calibrate_and_save(
     return calibration_results
 
 
-def get_calibrated_model_solution(income_group, initializers):
+def get_calibrated_model_solution(income_group, filename, initializers):
     model_data = make_model_data(income_group)
-    filename = f"../data/out/{income_group}_calibration.pkl"
     calibration_results = load_calibration(filename)
-    calibrated_data = dict(zip(initializers.keys(), calibration_results["x"]))
+    calibrated_data = dict(zip(initializers, calibration_results["x"]))
     model_data = set_calibrated_data(model_data, calibrated_data)
     y = solve_foc(model_data, np.asarray(model_data["optimizer"]["x0"])).tolist()
-    gamma = make_subsistence_consumption_share(model_data)(*y)
+    model_data["optimizer"]["x0"] = y
 
-    return [*y, gamma]
+    return model_data
