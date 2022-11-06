@@ -27,30 +27,38 @@ mcolor = "orange"
 format_strings = ["c-", "g--", "r-.", "k:", "m.-"]
 markersize = 4.0
 
-income_groups = ["low", "middle", "high", "all"]
-calibration_modes = [
-    "abs-schooling",
-    "abs-schooling-no-wages",
-    "abs-schooling-scl-wages",
-    "base",
-    "no-schooling",
-    "no-schooling-scl-wages",
-    "no-wages",
-    # "no-income-no-wages",
-]
 main_income_group = "all"
 main_calibration_mode = "abs-schooling-no-wages"
 
-initializer_names = [
-    "hat_c",
-    "varphi",
-    "beta_f",
-    "Z_ArAh",
-    "Z_MrMh",
-    "Z_SrSh",
-    "Z_ArSr",
-    "Z_MrSr",
+# fmt: off
+income_groups = ["low", "middle", "high", "all"]
+calibration_modes = [
+    "abs-schooling", "abs-schooling-no-wages", "abs-schooling-scl-wages",
+    "base",
+    "no-schooling", "no-schooling-scl-wages",
+    "no-wages", # "no-income-no-wages",
 ]
+
+initializer_names = [
+    "hat_c", "varphi",
+    "beta_f",
+    "Z_ArAh", "Z_MrMh", "Z_SrSh", "Z_ArSr", "Z_MrSr",
+]
+
+data_female_labor_shares = {
+  "low": [0.0815877, 0.0062807, 0.2938025, 0.0215187, 0.0126192, 0.0363058, 0.5478855],
+  "middle": [0.0281231, 0.0037166, 0.2975294, 0.0047409, 0.0191781, 0.0787491, 0.5679629],
+  "high": [0.0042724, 0.0009837, 0.2389524, 0.0023376, 0.0223466, 0.1015646, 0.6295427],
+  "all": [0.0379944, 0.003660333, 0.276761433, 0.0095324, 0.018047967, 0.0722065, 0.581797033]
+}
+data_male_labor_shares = {
+    "low": [0.0899835, 0.0075116, 0.1265374, 0.0434648, 0.0262223, 0.0810602, 0.6252202],
+    "middle": [0.0446018, 0.0058335, 0.1007717, 0.0289257, 0.0493341, 0.1208478, 0.6496854],
+    "high": [0.0076562, 0.0060439, 0.0976458, 0.0078905, 0.0785629, 0.1149185, 0.6872821],
+    "all": [0.047413833, 0.006463, 0.1083183, 0.026760333, 0.0513731, 0.105608833, 0.654062567]
+}
+data_subsistence_shares = { "low": 0.23, "middle": 0.06, "high": 0.02, "all": 0.1033 }
+# fmt: on
 
 
 def make_relative_expenditure_of_share(income_group, initializers, gender, over, under):
@@ -488,7 +496,7 @@ def make_production_share_figure(income_group, initializers):
     )
 
     plt.tight_layout()
-    filename = "../text/manuscript/fig/production_share.png"
+    filename = "../tmp/production-share.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -590,25 +598,16 @@ def make_production_scale_figure(income_group, initializers, initial_productivit
     )
 
     plt.tight_layout()
-    filename = "../text/manuscript/fig/productivity.png"
+    filename = "../tmp/productivity.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
 
 def make_labor_radar_figure(calibration_mode, income_group, initializers):
-    filename = f"../data/out/{calibration_mode}/{income_group}_income_calibration.pkl"
+    filename = f"../data/out/{calibration_mode}/{income_group}-income-calibration.pkl"
     solution = model.get_calibrated_model_solution(
         income_group, filename, initializers.keys()
     )
-
-    # fmt: off
-    data_female_labor_shares = {
-      "low": [0.0815877, 0.0062807, 0.2938025, 0.0215187, 0.0126192, 0.0363058, 0.5478855],
-      "middle": [0.0281231, 0.0037166, 0.2975294, 0.0047409, 0.0191781, 0.0787491, 0.5679629],
-      "high": [0.0042724, 0.0009837, 0.2389524, 0.0023376, 0.0223466, 0.1015646, 0.6295427],
-      "all": [0.0379944, 0.003660333, 0.276761433, 0.0095324, 0.018047967, 0.0722065, 0.581797033]
-    }
-    # fmt: on
 
     controls = {}
     for technology in solution["technologies"]:
@@ -641,55 +640,35 @@ def make_labor_radar_figure(calibration_mode, income_group, initializers):
     ax.plot(angles, values, linewidth=1, linestyle="solid", label="Model")
     ax.fill(angles, values, "b", alpha=0.1)
 
-    values = data_female_labor_shares[income_group]
+    values = data_female_labor_shares[income_group].copy()
     values += values[:1]
     ax.plot(angles, values, linewidth=1, linestyle="solid", label="Data")
     ax.fill(angles, values, "r", alpha=0.1)
 
     plt.legend(loc="upper right", bbox_to_anchor=(0.1, 0.1)).get_frame().set_alpha(0.0)
-    filename = f"../text/manuscript/fig/radar_{calibration_mode}_{income_group}.png"
+    filename = f"../tmp/radar-{calibration_mode}-{income_group}.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
 
-def make_labor_lollipop_figure(calibration_mode, initializers):
-    # fmt: off
-    data_female_labor_shares = {
-      "low": [0.0815877, 0.0062807, 0.2938025, 0.0215187, 0.0126192, 0.0363058, 0.5478855],
-      "middle": [0.0281231, 0.0037166, 0.2975294, 0.0047409, 0.0191781, 0.0787491, 0.5679629],
-      "high": [0.0042724, 0.0009837, 0.2389524, 0.0023376, 0.0223466, 0.1015646, 0.6295427],
-      "all": [0.0379944, 0.003660333, 0.276761433, 0.0095324, 0.018047967, 0.0722065, 0.581797033]
-    }
-    data_male_labor_shares = {
-        "low": [0.0899835, 0.0075116, 0.1265374, 0.0434648, 0.0262223, 0.0810602, 0.6252202],
-        "middle": [0.0446018, 0.0058335, 0.1007717, 0.0289257, 0.0493341, 0.1208478, 0.6496854],
-        "high": [0.0076562, 0.0060439, 0.0976458, 0.0078905, 0.0785629, 0.1149185, 0.6872821],
-        "all": [0.047413833, 0.006463, 0.1083183, 0.026760333, 0.0513731, 0.105608833, 0.654062567]
-    }
-    # fmt: on
-
+def load_income_and_labor_controls(calibration_mode, initializers):
     controls = {}
     for income_group in income_groups:
         controls[income_group] = {}
         filename = (
-            f"../data/out/{calibration_mode}/{income_group}_income_calibration.pkl"
+            f"../data/out/{calibration_mode}/{income_group}-income-calibration.pkl"
         )
         solution = model.get_calibrated_model_solution(
             income_group, filename, initializers.keys()
         )
 
-        for technology in solution["technologies"]:
-            for sector in solution["sectors"]:
-                index = f"{sector}{technology}"
-                controls[income_group][
-                    f"$L^{{f}}_{{{index}}}$"
-                ] = model.make_female_time_allocation_control(solution, index)(
-                    *solution["optimizer"]["x0"]
-                )
-
-        controls[income_group][""] = None
-        controls[income_group]["$M^{{f}}$"] = sum(
-            list(controls[income_group].values())[:-1]
+        controls[income_group]["$\\gamma$"] = model.make_subsistence_consumption_share(
+            solution
+        )(*solution["optimizer"]["x0"])
+        controls[income_group][
+            "$M^{{f}}$"
+        ] = 1 - model.make_female_time_allocation_control(solution, "l")(
+            *solution["optimizer"]["x0"]
         )
         controls[income_group][
             "$\\ell^{{f}}$"
@@ -707,20 +686,25 @@ def make_labor_lollipop_figure(calibration_mode, initializers):
             *solution["optimizer"]["x0"]
         )
 
+    return controls
+
+
+def make_income_and_labor_lollipop_figure(calibration_mode, initializers):
+    controls = load_income_and_labor_controls(calibration_mode, initializers)
+
     labels = functools.reduce(
-        lambda l, r: l + ["", ""] + r,
+        lambda l, r: l + [""] + r,
         [list(controls[income_group].keys()) for income_group in income_groups],
     )
     model_values = functools.reduce(
-        lambda l, r: l + [None, None] + r,
+        lambda l, r: l + [None] + r,
         [list(controls[income_group].values()) for income_group in income_groups],
     )
     data_values = functools.reduce(
-        lambda l, r: l + [None, None] + r,
+        lambda l, r: l + [None] + r,
         [
             [
-                *v[:-1],
-                None,
+                data_subsistence_shares[k],
                 sum(v[:-1]),
                 *v[-1:],
                 sum(data_male_labor_shares[k][:-1]),
@@ -743,7 +727,7 @@ def make_labor_lollipop_figure(calibration_mode, initializers):
     plt.setp(stemlines, "color", plt.getp(markerline, "color"))
     plt.setp(stemlines, "linestyle", "dotted")
 
-    plt.xticks(range(len(labels)), labels, rotation="vertical", fontsize=6)
+    plt.xticks(range(len(labels)), labels, rotation="vertical", fontsize=12)
     plt.legend().get_frame().set_alpha(0.0)
     plt.xlabel(
         functools.reduce(
@@ -751,13 +735,39 @@ def make_labor_lollipop_figure(calibration_mode, initializers):
         )
     )
 
-    filename = f"../text/manuscript/fig/lollipop_{calibration_mode}.png"
+    filename = f"../tmp/lollipop-{calibration_mode}.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
 
+def make_income_and_labor_errors_table(calibration_mode, initializers):
+    controls = load_income_and_labor_controls(calibration_mode, initializers)
+
+    output = f"calibration_mode = {calibration_mode}\n"
+    names = list(controls["all"].keys())
+    output = output + f"| group  | {' | '.join([f'{key:7}' for key in names])} | abs. sum |\n"
+    for income_group, model_values in controls.items():
+        data_values = np.asarray(
+            [
+                data_subsistence_shares[income_group],
+                sum(data_female_labor_shares[income_group][:-1]),
+                data_female_labor_shares[income_group][-1],
+                sum(data_male_labor_shares[income_group][:-1]),
+                data_male_labor_shares[income_group][-1],
+            ]
+        )
+        errors = np.asarray([v for v in model_values.values()]) - data_values
+        mask = f"{{:>7.4f}}"
+        values = [*[mask.format(v) for v in errors], mask.format(sum(np.abs(errors)))]
+        output = output + f"| {income_group:6} | {' | '.join(values)} |\n"
+
+    print(output)
+    with open(f"../tmp/labor_errors_{calibration_mode}.org", 'w') as f:
+        f.write(output)
+
+
 filename = (
-    f"../data/out/{main_calibration_mode}/{main_income_group}_income_calibration.pkl"
+    f"../data/out/{main_calibration_mode}/{main_income_group}-income-calibration.pkl"
 )
 solution = model.get_calibrated_model_solution(
     main_income_group, filename, initializer_names
@@ -769,8 +779,9 @@ for calibration_mode in calibration_modes:
     print(f"calibration_mode = {calibration_mode}")
     for income_group in income_groups:
         print(f"income_group = {income_group}")
-        # make_labor_radar_figure(calibration_mode, income_group, initializers)
-    make_labor_lollipop_figure(calibration_mode, initializers)
+        make_labor_radar_figure(calibration_mode, income_group, initializers)
+    make_income_and_labor_errors_table(calibration_mode, initializers)
+    make_income_and_labor_lollipop_figure(calibration_mode, initializers)
 
 make_production_share_figure(main_income_group, initializers)
 

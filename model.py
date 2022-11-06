@@ -1371,7 +1371,7 @@ def calibrate_if_not_exists_and_save(
     bounds = get_calibration_bounds(model_data, initializers.keys())
     calibration_results = {}
 
-    filename = f"../data/out/{calibration_mode}/{income_group}_income_calibration.pkl"
+    filename = f"../data/out/{calibration_mode}/{income_group}-income-calibration.pkl"
     if not exists(filename):
         calibration_results = minimize(
             lambda x: sum(errors(x)),

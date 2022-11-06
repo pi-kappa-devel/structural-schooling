@@ -61,7 +61,7 @@ initializers = {
 }
 
 calibration_modes = [
-    "abs-schooling",
+    # "abs-schooling",
     "abs-schooling-no-wages",
     "abs-schooling-scl-wages",
     "base",
@@ -85,24 +85,44 @@ for calibration_mode in calibration_modes:
             adaptive_optimizer_initialization=adaptive_optimizer_initialization,
             verbose=verbose,
         )
-        filename = f"../data/out/{calibration_mode}/{key}_income_calibration.pkl"
+        filename = f"../data/out/{calibration_mode}/{key}-income-calibration.pkl"
         solved_model = model.get_calibrated_model_solution(
             key, filename, initializers[key].keys()
         )
+        beta_m = (
+            solved_model["calibrated"]["beta_f"][0] / solved_model["fixed"]["tbeta"]
+        )
+        names = list(initializer.keys())
+        beta_f_pos = names.index("beta_f") + 1
         output[calibration_mode][key] = {
-            "values": np.append(
-                calibration_results[key]["x"], solved_model["optimizer"]["x0"]
-            ),
-            "initializer": [*initializer.keys(), "tw", "sf", "sm"],
+            "values": [
+                *calibration_results[key]["x"][:beta_f_pos],
+                beta_m,
+                *calibration_results[key]["x"][beta_f_pos:],
+                *solved_model["optimizer"]["x0"],
+            ],
+            "initializer": [
+                *names[:beta_f_pos],
+                "beta_m",
+                *names[beta_f_pos:],
+                "tw",
+                "sf",
+                "sm",
+            ],
         }
 
+
+results = ""
 for calibration_mode, calibration_results in output.items():
-    print(f"calibration_mode = {calibration_mode}")
+    results = results + f"calibration_mode = {calibration_mode}\n"
     names = calibration_results["all"]["initializer"]
-    print(f"| group  | {' | '.join([f'{key:7}' for key in names])} |")
+    results = results + f"| group  | {' | '.join([f'{key:7}' for key in names])} |\n"
     for key, initializer in initializers.items():
         masks = [f"{{:>7.4f}}" for _ in names]
         values = [
             masks[k].format(v) for k, v in enumerate(calibration_results[key]["values"])
         ]
-        print(f"| {key:6} | {' | '.join(values)} |")
+        results = results + f"| {key:6} | {' | '.join(values)} |\n"
+with open(f"../tmp/calibrations.org", 'w') as f:
+    f.write(results)
+print(results)
