@@ -61,7 +61,7 @@ initializers = {
 }
 
 calibration_modes = [
-    # "abs-schooling",
+    "abs-schooling",
     "abs-schooling-no-wages",
     "abs-schooling-scl-wages",
     "base",
