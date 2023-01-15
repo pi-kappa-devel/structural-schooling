@@ -11,12 +11,9 @@ Solver file for Why does the Schooling Gap Close when the Wage Gap Remains Const
 import numpy as np
 import matplotlib.pyplot as plt
 import model
+import calibration_mode
 from math import pi
 import functools
-
-from importlib import reload
-
-model = reload(model)
 
 hlinestyle = ":"
 flinestyle = "-"
@@ -28,41 +25,46 @@ format_strings = ["c-", "g--", "r-.", "k:", "m.-"]
 markersize = 4.0
 
 main_income_group = "all"
-main_calibration_mode = "abs-schooling-no-wages"
+main_calibration_mode = "abs-schooling-scl-wages"
 
 # fmt: off
 income_groups = ["low", "middle", "high", "all"]
-calibration_modes = [
-    "abs-schooling", "abs-schooling-no-wages", "abs-schooling-scl-wages",
-    "base",
-    "no-schooling", "no-schooling-scl-wages",
-    "no-wages", # "no-income-no-wages",
-]
+calibration_modes = calibration_mode.mapping()
 
 initializer_names = [
     "hat_c", "varphi",
-    "beta_f",
+    "beta_f", #"beta_m",
     "Z_ArAh", "Z_MrMh", "Z_SrSh", "Z_ArSr", "Z_MrSr",
 ]
 
 data_female_labor_shares = {
-  "low": [0.0815877, 0.0062807, 0.2938025, 0.0215187, 0.0126192, 0.0363058, 0.5478855],
-  "middle": [0.0281231, 0.0037166, 0.2975294, 0.0047409, 0.0191781, 0.0787491, 0.5679629],
-  "high": [0.0042724, 0.0009837, 0.2389524, 0.0023376, 0.0223466, 0.1015646, 0.6295427],
-  "all": [0.0379944, 0.003660333, 0.276761433, 0.0095324, 0.018047967, 0.0722065, 0.581797033]
+  "low": [
+      0.0815877, 0.0062807, 0.2938025, 0.0215187, 0.0126192, 0.0363058, 0.5478855],
+  "middle": [
+      0.0281231, 0.0037166, 0.2975294, 0.0047409, 0.0191781, 0.0787491, 0.5679629],
+  "high": [
+      0.0042724, 0.0009837, 0.2389524, 0.0023376, 0.0223466, 0.1015646, 0.6295427],
+  "all": [
+      0.0379944, 0.0036603, 0.2767614, 0.0095324, 0.0180480, 0.0722065, 0.5817970]
 }
 data_male_labor_shares = {
-    "low": [0.0899835, 0.0075116, 0.1265374, 0.0434648, 0.0262223, 0.0810602, 0.6252202],
-    "middle": [0.0446018, 0.0058335, 0.1007717, 0.0289257, 0.0493341, 0.1208478, 0.6496854],
-    "high": [0.0076562, 0.0060439, 0.0976458, 0.0078905, 0.0785629, 0.1149185, 0.6872821],
-    "all": [0.047413833, 0.006463, 0.1083183, 0.026760333, 0.0513731, 0.105608833, 0.654062567]
+    "low": [
+        0.0899835, 0.0075116, 0.1265374, 0.0434648, 0.0262223, 0.0810602, 0.6252202],
+    "middle": [
+        0.0446018, 0.0058335, 0.1007717, 0.0289257, 0.0493341, 0.1208478, 0.6496854],
+    "high": [
+        0.0076562, 0.0060439, 0.0976458, 0.0078905, 0.0785629, 0.1149185, 0.6872821],
+    "all": [
+        0.0474138, 0.0064630, 0.1083183, 0.0267603, 0.0513731, 0.1056088, 0.6540626]
 }
 data_subsistence_shares = { "low": 0.23, "middle": 0.06, "high": 0.02, "all": 0.1033 }
 # fmt: on
 
 
 def make_relative_expenditure_of_share(income_group, initializers, gender, over, under):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     def relative_expenditure_of_female(xif_under):
@@ -87,7 +89,9 @@ def make_relative_expenditure_of_share(income_group, initializers, gender, over,
 def make_relative_expenditure_of_productivity(
     income_group, initializers, gender, over, under, initial_productivities
 ):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     for k, v in initial_productivities.items():
@@ -130,7 +134,9 @@ def make_relative_expenditure_of_productivity(
 def make_wage_bill_of_share(
     income_group, initializers, bill_gender, share_gender, indices
 ):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     def female_wage_bill_of_female(xif_indices):
@@ -159,7 +165,9 @@ def make_wage_bill_of_share(
 
 
 def make_wage_bill_of_productivity(income_group, initializers, bill_gender, indices):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     def female_wage_bill(_):
@@ -176,7 +184,9 @@ def make_wage_bill_of_productivity(income_group, initializers, bill_gender, indi
 def make_time_allocation_ratio_of_share(
     income_group, initializers, bill_gender, share_gender, over, under
 ):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     def female_flow_time_allocation_ratio_of_female(xif_under):
@@ -221,7 +231,9 @@ def make_time_allocation_ratio_of_productivity(
     under,
     initial_productivities,
 ):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     for k, v in initial_productivities.items():
@@ -278,7 +290,9 @@ def make_time_allocation_ratio_of_productivity(
 def make_time_allocation_share_of_share(
     income_group, initializers, bill_gender, share_gender, indices
 ):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     def female_time_allocation_share_of_female(xif_indices):
@@ -317,7 +331,9 @@ def make_time_allocation_share_of_share(
 def make_time_allocation_share_of_productivity(
     income_group, initializers, bill_gender, share_gender, under, initial_productivities
 ):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
 
     for k, v in initial_productivities.items():
@@ -415,7 +431,9 @@ def make_share_subplot(
 
 
 def make_production_share_figure(income_group, initializers):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
     x = data["optimizer"]["x0"]
 
@@ -502,7 +520,9 @@ def make_production_share_figure(income_group, initializers):
 
 
 def make_production_scale_figure(income_group, initializers, initial_productivities):
-    data = model.make_model_data(income_group)
+    data = model.make_model_data(
+        income_group, preparation_callback=calibration_modes[main_calibration_mode]
+    )
     data = model.set_calibrated_data(data, initializers)
     x = data["optimizer"]["x0"]
 
@@ -606,7 +626,10 @@ def make_production_scale_figure(income_group, initializers, initial_productivit
 def make_labor_radar_figure(calibration_mode, income_group, initializers):
     filename = f"../data/out/{calibration_mode}/{income_group}-income-calibration.pkl"
     solution = model.get_calibrated_model_solution(
-        income_group, filename, initializers.keys()
+        income_group,
+        filename,
+        initializers.keys(),
+        preparation_callback=calibration_modes[calibration_mode],
     )
 
     controls = {}
@@ -651,7 +674,7 @@ def make_labor_radar_figure(calibration_mode, income_group, initializers):
     plt.close()
 
 
-def load_income_and_labor_controls(calibration_mode, initializers):
+def load_controls(calibration_mode, initializers):
     controls = {}
     for income_group in income_groups:
         controls[income_group] = {}
@@ -659,38 +682,52 @@ def load_income_and_labor_controls(calibration_mode, initializers):
             f"../data/out/{calibration_mode}/{income_group}-income-calibration.pkl"
         )
         solution = model.get_calibrated_model_solution(
-            income_group, filename, initializers.keys()
+            income_group,
+            filename,
+            initializers.keys(),
+            preparation_callback=calibration_modes[calibration_mode],
         )
 
         controls[income_group]["$\\gamma$"] = model.make_subsistence_consumption_share(
             solution
         )(*solution["optimizer"]["x0"])
         controls[income_group][
-            "$M^{{f}}$"
-        ] = 1 - model.make_female_time_allocation_control(solution, "l")(
+            "$M^{f}$"
+        ] = model.make_female_modern_production_allocation(solution)(
             *solution["optimizer"]["x0"]
         )
         controls[income_group][
-            "$\\ell^{{f}}$"
+            "$\\ell^{f}$"
         ] = model.make_female_time_allocation_control(solution, "l")(
             *solution["optimizer"]["x0"]
         )
         controls[income_group][
-            "$M^{{m}}$"
-        ] = 1 - model.make_male_time_allocation_control(solution, "l")(
+            "$M^{m}$"
+        ] = model.make_male_modern_production_allocation(solution)(
             *solution["optimizer"]["x0"]
         )
         controls[income_group][
-            "$\\ell^{{m}}$"
+            "$\\ell^{m}$"
         ] = model.make_male_time_allocation_control(solution, "l")(
             *solution["optimizer"]["x0"]
+        )
+        controls[income_group]["$\\tilde w$"] = solution["optimizer"]["x0"][0]
+        controls[income_group]["$\\tilde s$"] = (
+            solution["optimizer"]["x0"][1] / solution["optimizer"]["x0"][2]
+        )
+        controls[income_group]["$\\tilde M$"] = (
+            controls[income_group]["$M^{f}$"] / controls[income_group]["$M^{m}$"]
         )
 
     return controls
 
 
 def make_income_and_labor_lollipop_figure(calibration_mode, initializers):
-    controls = load_income_and_labor_controls(calibration_mode, initializers)
+    variables = ["$\\gamma$", "$M^{f}$", "$\\ell^{f}$", "$M^{m}$", "$\\ell^{m}$"]
+    controls = {
+        group: {control: data[control] for control in variables}
+        for group, data in load_controls(calibration_mode, initializers).items()
+    }
 
     labels = functools.reduce(
         lambda l, r: l + [""] + r,
@@ -705,9 +742,9 @@ def make_income_and_labor_lollipop_figure(calibration_mode, initializers):
         [
             [
                 data_subsistence_shares[k],
-                sum(v[:-1]),
+                sum(v[3:-1]),
                 *v[-1:],
-                sum(data_male_labor_shares[k][:-1]),
+                sum(data_male_labor_shares[k][3:-1]),
                 data_male_labor_shares[k][-1],
             ]
             for k, v in data_female_labor_shares.items()
@@ -716,12 +753,20 @@ def make_income_and_labor_lollipop_figure(calibration_mode, initializers):
 
     plt.figure()
     markerline, stemlines, baseline = plt.stem(
-        range(len(labels)), model_values, markerfmt="bo", label="Model"
+        range(len(labels)),
+        model_values,
+        markerfmt="bo",
+        label="Model",
+        use_line_collection=True,
     )
     plt.setp(baseline, visible=False)
 
     markerline, stemlines, baseline = plt.stem(
-        range(len(labels)), data_values, markerfmt="rx", label="Data"
+        range(len(labels)),
+        data_values,
+        markerfmt="rx",
+        label="Data",
+        use_line_collection=True,
     )
     plt.setp(baseline, visible=False)
     plt.setp(stemlines, "color", plt.getp(markerline, "color"))
@@ -741,28 +786,131 @@ def make_income_and_labor_lollipop_figure(calibration_mode, initializers):
 
 
 def make_income_and_labor_errors_table(calibration_mode, initializers):
-    controls = load_income_and_labor_controls(calibration_mode, initializers)
+    variables = ["$\\gamma$", "$M^{f}$", "$\\ell^{f}$", "$M^{m}$", "$\\ell^{m}$"]
+    controls = {
+        group: {control: data[control] for control in variables}
+        for group, data in load_controls(calibration_mode, initializers).items()
+    }
 
     output = f"calibration_mode = {calibration_mode}\n"
     names = list(controls["all"].keys())
-    output = output + f"| group  | {' | '.join([f'{key:7}' for key in names])} | abs. sum |\n"
+    output = (
+        output
+        + f"| {' | '.join([f'{key:10}' for key in ['group', *names, 'abs.sum.']])} |\n"
+    )
     for income_group, model_values in controls.items():
         data_values = np.asarray(
             [
                 data_subsistence_shares[income_group],
-                sum(data_female_labor_shares[income_group][:-1]),
-                data_female_labor_shares[income_group][-1],
-                sum(data_male_labor_shares[income_group][:-1]),
-                data_male_labor_shares[income_group][-1],
+                sum(data_female_labor_shares[income_group][3:-4]),
+                data_female_labor_shares[income_group][-4],
+                sum(data_male_labor_shares[income_group][3:-4]),
+                data_male_labor_shares[income_group][-4],
             ]
         )
         errors = np.asarray([v for v in model_values.values()]) - data_values
-        mask = f"{{:>7.4f}}"
+        mask = "{:>10.4f}"
         values = [*[mask.format(v) for v in errors], mask.format(sum(np.abs(errors)))]
-        output = output + f"| {income_group:6} | {' | '.join(values)} |\n"
+        output = output + f"| {income_group:10} | {' | '.join(values)} |\n"
 
     print(output)
-    with open(f"../tmp/labor_errors_{calibration_mode}.org", 'w') as f:
+    with open(f"../tmp/labor-errors-{calibration_mode}.org", "w") as f:
+        f.write(output)
+
+
+def make_prediction_differences_table(calibration_mode, initializers):
+    variables = ["$\\tilde w$", "$\\tilde M$", "$\\tilde s$"]
+    controls = {
+        group: {control: data[control] for control in variables}
+        for group, data in load_controls(calibration_mode, initializers).items()
+    }
+
+    def prc(l, r):
+        return "{:>7.2f}\\%".format(100 * (r - l) / l)
+
+    output = (
+        "\\\\ \\midrule\n\\multicolumn{6}{c}{\\textbf{\\Cref{calib:"
+        + calibration_mode
+        + "}: "
+        + calibration_mode
+        + "}} \\\\ \\midrule\n"
+    )
+    model_values = [
+        [
+            model_values[variable]
+            for income_group, model_values in controls.items()
+            if income_group != "all"
+        ]
+        for variable in variables
+    ]
+    model_values = [
+        [*row, prc(row[0], row[1]), prc(row[1], row[2])] for row in model_values
+    ]
+    for row, variable in enumerate(variables):
+        output = (
+            output
+            + f"\\textbf{{{variable}}} & "
+            + " & ".join(
+                [
+                    "{:>7.4f}".format(value)
+                    for value in model_values[row]
+                    if type(value) != str
+                ]
+            )
+            + " & "
+            + " & ".join([value for value in model_values[row] if type(value) == str])
+        )
+        if row != len(variables) - 1:
+            output = output + " \\\\"
+        output = output + "\n"
+
+    print(output)
+    with open(f"../tmp/prediction-differences-{calibration_mode}.tex", "w") as f:
+        f.write(output)
+
+
+def make_calibration_table(calibration_mode, initializers):
+    output = (
+        "\\\\ \\midrule\n\\multicolumn{"
+        + str(len(initializers) + 4)
+        + "}{c}{\\textbf{\\Cref{calib:"
+        + calibration_mode
+        + "}: "
+        + calibration_mode
+        + "}} \\\\ \\midrule\n"
+    )
+    adjusted_initializers = {k: v for k, v in initializers.items() if k != "beta_f"}
+    adjusted_initializers["beta_f"] = initializers["beta_f"]
+
+    for income_group in income_groups:
+        filename = (
+            f"../data/out/{calibration_mode}/{income_group}-income-calibration.pkl"
+        )
+        solution = model.get_calibrated_model_solution(
+            income_group,
+            filename,
+            initializers.keys(),
+            preparation_callback=calibration_modes[calibration_mode],
+        )
+        mask = f"{{:>7.4f}}"
+        values = [
+            *[
+                mask.format(solution["calibrated"][key][0])
+                for key in adjusted_initializers
+            ],
+            mask.format(
+                solution["calibrated"]["beta_f"][0] / solution["fixed"]["tbeta"]
+            ),
+            *[mask.format(x) for x in solution["optimizer"]["x0"]],
+        ]
+
+        output = output + f"\\textbf{{{income_group}}} & {' & '.join(values)}"
+        if income_group != "all":
+            output = output + " \\\\"
+        output = output + "\n"
+
+    print(output)
+    with open(f"../tmp/calibration-{calibration_mode}.tex", "w") as f:
         f.write(output)
 
 
@@ -770,19 +918,26 @@ filename = (
     f"../data/out/{main_calibration_mode}/{main_income_group}-income-calibration.pkl"
 )
 solution = model.get_calibrated_model_solution(
-    main_income_group, filename, initializer_names
+    main_income_group,
+    filename,
+    initializer_names,
+    preparation_callback=calibration_modes[main_calibration_mode],
 )
 initializers = {k: v[0] for k, v in solution["calibrated"].items()}
 
-
-for calibration_mode in calibration_modes:
+for calibration_mode, preparation_callback in calibration_modes.items():
+    if calibration_mode == "no-income-no-wages":
+        del initializers["hat_c"]
     print(f"calibration_mode = {calibration_mode}")
     for income_group in income_groups:
         print(f"income_group = {income_group}")
         make_labor_radar_figure(calibration_mode, income_group, initializers)
     make_income_and_labor_errors_table(calibration_mode, initializers)
+    make_prediction_differences_table(calibration_mode, initializers)
+    make_calibration_table(calibration_mode, initializers)
     make_income_and_labor_lollipop_figure(calibration_mode, initializers)
 
+initializers = {k: v[0] for k, v in solution["calibrated"].items()}
 make_production_share_figure(main_income_group, initializers)
 
 initial_productivities = {

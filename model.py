@@ -8,6 +8,7 @@ Model file for "Why does the Schooling Gap Close when the Wage Gap Remains Const
    schooling. Firms choose effective labor units.
 """
 
+import os
 import numpy as np
 import pandas as pd
 import math as m
@@ -44,10 +45,10 @@ def make_hc_fdf(model_data):
     return {"h": H, "dh": lambda s: H(s) * zeta * np.power(s, -nu)}
 
 
-def make_model_data(income_group, calibration_init=None):
+def make_model_data(income_group, calibration_init=None, preparation_callback=None):
     """Prepare model data for an income group.
 
-    Expected to be used for constructing data for model calibrations. 
+    Expected to be used for constructing data for model calibrations.
 
     Args:
         income_group (str): Income group string, among "low", "middle", "high",
@@ -61,13 +62,10 @@ def make_model_data(income_group, calibration_init=None):
     income_groups = ["low", "middle", "high", "all"]
     income_group_index = income_groups.index(income_group)
 
-    wage_target_weight = 1
-    female_schooling_target_weight = 1 / input_data.loc[income_group_index, "T"]
-    male_schooling_target_weight = 1 / input_data.loc[income_group_index, "T"]
-    consumption_target_weight = 1
-
     def make_labor_target(gender, index):
-        data = input_data.iloc[income_group_index]["L{}_{}".format(gender, index)]
+        def data():
+            return input_data.iloc[income_group_index]["L{}_{}".format(gender, index)]
+
         if gender == "f":
 
             def prediction(d, tw, sf, sm):
@@ -81,10 +79,12 @@ def make_model_data(income_group, calibration_init=None):
         return [data, prediction]
 
     def make_within_gender_labor_ratio_target(gender, over, under):
-        data = (
-            input_data.iloc[income_group_index]["L{}_{}".format(gender, over)]
-            / input_data.iloc[income_group_index]["L{}_{}".format(gender, under)]
-        )
+        def data():
+            return (
+                input_data.iloc[income_group_index]["L{}_{}".format(gender, over)]
+                / input_data.iloc[income_group_index]["L{}_{}".format(gender, under)]
+            )
+
         if gender == "f":
 
             def prediction(d, tw, sf, sm):
@@ -101,48 +101,21 @@ def make_model_data(income_group, calibration_init=None):
 
         return [data, prediction]
 
-    targets = {
-        # relative female labor allocation
-        "Lf_ArAh": make_within_gender_labor_ratio_target("f", "Ar", "Ah"),
-        "Lf_MrMh": make_within_gender_labor_ratio_target("f", "Mr", "Mh"),
-        "Lf_SrSh": make_within_gender_labor_ratio_target("f", "Sr", "Sh"),
-        "Lf_ArSr": make_within_gender_labor_ratio_target("f", "Ar", "Sr"),
-        "Lf_MrSr": make_within_gender_labor_ratio_target("f", "Mr", "Sr"),
-        # leisure allocation
-        "Lf_l": make_labor_target("f", "l"),
-        # schooling years
-        "sf": [
-            input_data.loc[income_group_index].sf * female_schooling_target_weight,
-            lambda d, tw, sf, sm: sf * female_schooling_target_weight,
-        ],
-        "sm": [
-            input_data.loc[income_group_index].sm * male_schooling_target_weight,
-            lambda d, tw, sf, sm: sm * male_schooling_target_weight,
-        ],
-        # wage ratio
-        "tw": [
-            input_data.loc[income_group_index].tw * wage_target_weight,
-            lambda d, tw, sf, sm: tw * wage_target_weight,
-        ],
-        # subsistence share
-        "gamma": [
-            input_data.loc[income_group_index].gamma * consumption_target_weight,
-            lambda d, tw, sf, sm: make_subsistence_consumption_share(d)(tw, sf, sm)
-            * consumption_target_weight,
-        ],
-        # internal solutions
-        # "F": [
-        #     0,
-        #     lambda d, tw, sf, sm: np.linalg.norm(make_foc(d)(np.asarray([tw, sf, sm]))),
-        # ],
+    weights = {
+        "sf": 1 / input_data.loc[income_group_index, "T"],
+        "sm": 1 / input_data.loc[income_group_index, "T"],
+        "tw": 1,
+        "gamma": 1,
     }
 
     data = {
         "income_group": income_group,
+        "hooks": {"hat_c": None},
         "calibrated": {
             "hat_c": [None, (0, None)],  # adjusted subsistence term
             "varphi": [None, (1e-3, None)],  # leisure preference scale
             "beta_f": [None, (1e-3, None)],  # female's schooling cost
+            # "beta_m": [None, (1e-3, None)],  # male's schooling cost
             # relative productivities
             "Z_ArAh": [None, (1e-3, None)],
             "Z_MrMh": [None, (1e-3, None)],
@@ -151,7 +124,6 @@ def make_model_data(income_group, calibration_init=None):
             "Z_MrSr": [None, (1e-3, None)],
         },
         "fixed": {
-            # "hat_c": 0,  # adjusted subsistence term
             "eta": 2.27,  # labor input gender substitutability
             "eta_l": 2.27,  # leisure gender substitutability
             "epsilon": 0.002,  # output sectoral  substitutability
@@ -159,18 +131,18 @@ def make_model_data(income_group, calibration_init=None):
             "nu": 0.58,  # log human capital curvature
             "zeta": 0.32,  # log human capital scale
             "rho": 0.04,  # subjective discount factor
+            "tbeta": input_data.loc[
+                income_group_index, "tbeta"
+            ],  # modern services productivity
             "Lf": 1.0,  # female's time endowment
             "Lm": 1.0,  # male's time endowment
             "T": input_data.loc[income_group_index, "T"],  # life expectancy
             "Z_Sr": 1.0,  # modern services productivity
-            "tbeta": input_data.loc[
-                income_group_index
-            ].tbeta,  # relative schooling cost
         },
         "sectors": sectors,
         "technologies": technologies,
         "income_groups": income_groups,
-        "calibrator": {"step": None, "lambda": 1, "tol": 1e-6, "targets": targets},
+        "calibrator": {"weights": weights, "targets": None, "maxiter": 10 ** 4},
         "optimizer": {
             "x0": [
                 input_data.loc[income_group_index].tw,
@@ -185,6 +157,50 @@ def make_model_data(income_group, calibration_init=None):
             "htol": 1e-8,
         },
     }
+
+    data["hooks"]["hat_c"] = lambda x: x["calibrated"]["hat_c"][0]
+
+    targets = {
+        # relative female labor allocation
+        "Lf_ArAh": make_within_gender_labor_ratio_target("f", "Ar", "Ah"),
+        "Lf_MrMh": make_within_gender_labor_ratio_target("f", "Mr", "Mh"),
+        "Lf_SrSh": make_within_gender_labor_ratio_target("f", "Sr", "Sh"),
+        "Lf_ArSr": make_within_gender_labor_ratio_target("f", "Ar", "Sr"),
+        "Lf_MrSr": make_within_gender_labor_ratio_target("f", "Mr", "Sr"),
+        # leisure allocation
+        "Lf_l": make_labor_target("f", "l"),
+        # schooling years
+        "sf": [
+            lambda: input_data.loc[income_group_index].sf
+            * data["calibrator"]["weights"]["sf"],
+            lambda d, tw, sf, sm: sf * data["calibrator"]["weights"]["sf"],
+        ],
+        "sm": [
+            lambda: input_data.loc[income_group_index].sm
+            * data["calibrator"]["weights"]["sm"],
+            lambda d, tw, sf, sm: sm * data["calibrator"]["weights"]["sm"],
+        ],
+        # wage ratio
+        "tw": [
+            lambda: input_data.loc[income_group_index].tw
+            * data["calibrator"]["weights"]["tw"],
+            lambda d, tw, sf, sm: tw * data["calibrator"]["weights"]["tw"],
+        ],
+        # subsistence share
+        "gamma": [
+            lambda: input_data.loc[income_group_index].gamma
+            * data["calibrator"]["weights"]["gamma"],
+            lambda d, tw, sf, sm: make_subsistence_consumption_share(d)(tw, sf, sm)
+            * data["calibrator"]["weights"]["gamma"],
+        ],
+        # internal solutions
+        # "F": [
+        #     0,
+        #     lambda d, tw, sf, sm: np.linalg.norm(make_foc(d)(np.asarray([tw, sf, sm]))),
+        # ],
+    }
+
+    data["calibrator"]["targets"] = targets
 
     def calculate_labor_share(index):
         d = make_discounter_fdf(data)["d"]
@@ -227,6 +243,9 @@ def make_model_data(income_group, calibration_init=None):
         # this also checks if all parameters are initialized
         for k in data["calibrated"].keys():
             data["calibrated"][k][0] = calibration_init[k]
+
+    if preparation_callback:
+        data = preparation_callback(data)
 
     return data
 
@@ -684,7 +703,7 @@ def make_base_female_traditional_labor(model_data):
         im = "{}r".format(sector)
 
         varphi = model_data["calibrated"]["varphi"][0]
-        hat_c = model_data["calibrated"]["hat_c"][0]
+        hat_c = model_data["hooks"]["hat_c"](model_data)
         Lf = model_data["fixed"]["Lf"]
 
         Eimih = make_relative_consumption_expenditure(model_data, im, ih)
@@ -719,7 +738,7 @@ def make_subsistence_consumption_share(model_data):
     sector = [p[2:3] for p in model_data["fixed"] if re.search("Z_[AMS]r", p)][0]
 
     def subsh(tw, sf, sm):
-        hat_c = model_data["calibrated"]["hat_c"][0]
+        hat_c = model_data["hooks"]["hat_c"](model_data)
         Pih = make_implicit_female_traditional_technology_coefficient(
             model_data, sector
         )
@@ -1292,7 +1311,7 @@ def make_calibration(
         y = solve_foc(model_data, np.asarray(model_data["optimizer"]["x0"]))
         sae = sum(
             [
-                np.abs(v[0] - v[1](model_data, y[0], y[1], y[2]))
+                np.abs(v[0]() - v[1](model_data, y[0], y[1], y[2]))
                 for _, v in model_data["calibrator"]["targets"].items()
             ]
         )
@@ -1303,7 +1322,7 @@ def make_calibration(
         print(
             "Calibration Errors = {}".format(
                 {
-                    k: np.abs(v[0] - v[1](model_data, y[0], y[1], y[2]))
+                    k: np.abs(v[0]() - v[1](model_data, y[0], y[1], y[2]))
                     for k, v in model_data["calibrator"]["targets"].items()
                 }
             )
@@ -1312,7 +1331,7 @@ def make_calibration(
             "Calibration Sum of Absolute Errors = {}".format(
                 sum(
                     [
-                        np.abs(v[0] - v[1](model_data, y[0], y[1], y[2]))
+                        np.abs(v[0]() - v[1](model_data, y[0], y[1], y[2]))
                         for _, v in model_data["calibrator"]["targets"].items()
                     ]
                 )
@@ -1320,7 +1339,7 @@ def make_calibration(
         )
 
         return [
-            np.abs(v[0] - v[1](model_data, y[0], y[1], y[2]))
+            np.abs(v[0]() - v[1](model_data, y[0], y[1], y[2]))
             for _, v in model_data["calibrator"]["targets"].items()
         ]
 
@@ -1331,6 +1350,7 @@ def save_calibration_if_not_exists(filename, calibration_results):
     """Save Calibrated Model."""
 
     if not exists(filename):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         fh = open(filename, "wb")
         pickle.dump(calibration_results, fh)
         fh.close()
@@ -1353,10 +1373,13 @@ def calibrate_if_not_exists_and_save(
     initializers,
     adaptive_optimizer_initialization=False,
     verbose=False,
+    preparation_callback=None,
 ):
     """Calibrate the Model and Save the Results."""
 
-    model_data = make_model_data(income_group)
+    model_data = make_model_data(
+        income_group, preparation_callback=preparation_callback
+    )
     model_data = set_calibrated_data(model_data, initializers, verbose=verbose)
 
     print(f"Calibrating Model with {income_group.capitalize()} Income Data")
@@ -1376,9 +1399,13 @@ def calibrate_if_not_exists_and_save(
         calibration_results = minimize(
             lambda x: sum(errors(x)),
             [v for v in initializers.values()],
-            bounds=bounds,
+            # bounds=bounds,  # for L-BFGS-B
             method="Nelder-Mead",
-            options={"disp": True},
+            options={
+                "disp": True,
+                "bounds": bounds, # for Nelder-Mead
+                "maxiter": model_data["calibrator"]["maxiter"],
+            },
         )
         save_calibration_if_not_exists(filename, calibration_results)
     else:
@@ -1387,8 +1414,12 @@ def calibrate_if_not_exists_and_save(
     return calibration_results
 
 
-def get_calibrated_model_solution(income_group, filename, initializers):
-    model_data = make_model_data(income_group)
+def get_calibrated_model_solution(
+    income_group, filename, initializers, preparation_callback
+):
+    model_data = make_model_data(
+        income_group, preparation_callback=preparation_callback
+    )
     calibration_results = load_calibration(filename)
     calibrated_data = dict(zip(initializers, calibration_results["x"]))
     model_data = set_calibrated_data(model_data, calibrated_data)
