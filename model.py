@@ -1,11 +1,13 @@
 """
-Model file for "Why does the Schooling Gap Close when the Wage Gap Remains Constant?"
+Model file.
 
 @authors: Pantelis Karapanagiotis and Paul Reimers
    Version of Model with two types of production technologies (traditional and modern),
    three sectors (agriculture, manufacturing, and services), genders , and schooling.
    Each household consist of a female and a male. Modern production occurs only after
    schooling. Firms choose effective labor units.
+@see "Why does the Schooling Gap Close while the Wage Gap Persists across Country
+Income Comparisons?".
 """
 
 import os
@@ -22,7 +24,8 @@ from os.path import exists
 def make_discounter_fdf(model_data):
     """Prepare working life discounter function and derivative.
 
-    See section (A.1)."""
+    See section (A.1).
+    """
     rho = model_data["fixed"]["rho"]
     T = model_data["fixed"]["T"]
 
@@ -35,7 +38,8 @@ def make_discounter_fdf(model_data):
 def make_hc_fdf(model_data):
     """Prepare human capital function and derivative.
 
-    See equation (C.6)."""
+    See equation (C.6).
+    """
     zeta = model_data["fixed"]["zeta"]
     nu = model_data["fixed"]["nu"]
 
@@ -254,7 +258,7 @@ def set_calibrated_data(data, calibration_data, verbose=False):
     """Set new calibration parameters.
 
     Used to set calibration parameters from either a list or a dictionary. The argument
-    `calibration_data` is expected to be a dictionary, the order of parameters does not matter. 
+    `calibration_data` is expected to be a dictionary, the order of parameters does not matter.
 
     Args:
         data (dict): Model data.
@@ -317,7 +321,8 @@ def print_model_data(model_data):
 def make_working_life(model_data):
     """Prepare working life function.
 
-    See section (A.1)."""
+    See section (A.1).
+    """
     T = model_data["fixed"]["T"]
 
     def delta(s):
@@ -329,7 +334,8 @@ def make_working_life(model_data):
 def make_female_lifetime_schooling_cost_fdf(model_data):
     """Prepare female lifetime cost of schooling function.
 
-    See equation (C.1). The expression is part of the objective."""
+    See equation (C.1). The expression is part of the objective.
+    """
     rho = model_data["fixed"]["rho"]
     beta_f = model_data["calibrated"]["beta_f"][0]
 
@@ -342,7 +348,8 @@ def make_female_lifetime_schooling_cost_fdf(model_data):
 def make_male_lifetime_schooling_cost_fdf(model_data):
     """Prepare male lifetime cost of schooling function.
 
-    See equation (C.1). The expression is part of the objective."""
+    See equation (C.1). The expression is part of the objective.
+    """
     rho = model_data["fixed"]["rho"]
     beta_m = model_data["calibrated"]["beta_f"][0] / model_data["fixed"]["tbeta"]
 
@@ -926,9 +933,9 @@ def make_aggregate_male_flow_time_allocation_ratio(model_data, index):
 def make_female_time_allocation_control(model_data, index):
     """Prepare a female time allocation control function.
 
-    The female time allocation controls' calculations depend on make_base_female_traditional_labor().
-    The base control is directly calculated. The remaining calculations use this base control. See
-    appendix's equation (D.12). 
+    The female time allocation controls' calculations depend on
+    make_base_female_traditional_labor(). The base control is directly calculated. The
+    remaining calculations use this base control. See appendix's equation (D.12).
     """
     Lf = model_data["fixed"]["Lf"]
     Rfip = make_aggregate_female_flow_time_allocation_ratio(model_data, index)
@@ -945,6 +952,25 @@ def make_female_modern_production_allocation(model_data):
         return sum(
             [
                 make_female_time_allocation_control(model_data, "{}r".format(s))(
+                    tw, sf, sm
+                )
+                for s in model_data["sectors"]
+            ]
+        )
+
+    return Mf
+
+
+def make_female_traditional_production_allocation(model_data):
+    """Prepare female traditional production allocation function.
+
+    The sum of female traditional production labor controls.
+    """
+
+    def Mf(tw, sf, sm):
+        return sum(
+            [
+                make_female_time_allocation_control(model_data, "{}h".format(s))(
                     tw, sf, sm
                 )
                 for s in model_data["sectors"]
@@ -995,6 +1021,25 @@ def make_male_modern_production_allocation(model_data):
         return sum(
             [
                 make_male_time_allocation_control(model_data, "{}r".format(s))(
+                    tw, sf, sm
+                )
+                for s in model_data["sectors"]
+            ]
+        )
+
+    return Mm
+
+
+def make_male_traditional_production_allocation(model_data):
+    """Prepare male traditional production allocation function.
+
+    The sum of male traditional production labor controls.
+    """
+
+    def Mm(tw, sf, sm):
+        return sum(
+            [
+                make_male_time_allocation_control(model_data, "{}h".format(s))(
                     tw, sf, sm
                 )
                 for s in model_data["sectors"]
@@ -1237,7 +1282,6 @@ def make_jacobian(model_data):
 
 def solve_foc(model_data, y):
     """Solve the optimization problem."""
-
     F = make_foc(model_data)
     J = make_jacobian(model_data)
 
@@ -1347,8 +1391,7 @@ def make_calibration(
 
 
 def save_calibration_if_not_exists(filename, calibration_results):
-    """Save Calibrated Model."""
-
+    """Save calibrated model."""
     if not exists(filename):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         fh = open(filename, "wb")
@@ -1359,8 +1402,7 @@ def save_calibration_if_not_exists(filename, calibration_results):
 
 
 def load_calibration(filename):
-    """Load Saved Calibrated Model."""
-
+    """Load a saved calibrated model."""
     fh = open(filename, "rb")
     calibration_results = pickle.load(fh)
     fh.close()
@@ -1375,8 +1417,7 @@ def calibrate_if_not_exists_and_save(
     verbose=False,
     preparation_callback=None,
 ):
-    """Calibrate the Model and Save the Results."""
-
+    """Calibrate the model and save the results."""
     model_data = make_model_data(
         income_group, preparation_callback=preparation_callback
     )
@@ -1400,11 +1441,12 @@ def calibrate_if_not_exists_and_save(
             lambda x: sum(errors(x)),
             [v for v in initializers.values()],
             # bounds=bounds,  # for L-BFGS-B
-            method="Nelder-Mead",
+            method="BFGS",
             options={
                 "disp": True,
-                "bounds": bounds, # for Nelder-Mead
+                "bounds": bounds,  # for Nelder-Mead
                 "maxiter": model_data["calibrator"]["maxiter"],
+                "adaptive": True,
             },
         )
         save_calibration_if_not_exists(filename, calibration_results)
@@ -1417,6 +1459,7 @@ def calibrate_if_not_exists_and_save(
 def get_calibrated_model_solution(
     income_group, filename, initializers, preparation_callback
 ):
+    """Get the saved calibrated model solution."""
     model_data = make_model_data(
         income_group, preparation_callback=preparation_callback
     )

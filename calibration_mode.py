@@ -45,9 +45,26 @@ def prepare_no_wages(model_data):
 
 
 def prepare_no_income_no_wages(model_data):
-    del model_data["calibrator"]["targets"]["tw"]
     del model_data["calibrated"]["hat_c"]
     model_data["hooks"]["hat_c"] = lambda x: 0
+    del model_data["calibrator"]["targets"]["tw"]
+    return model_data
+
+
+def prepare_no_income_no_schooling(model_data):
+    del model_data["calibrated"]["hat_c"]
+    model_data["hooks"]["hat_c"] = lambda x: 0
+    del model_data["calibrator"]["targets"]["sf"]
+    del model_data["calibrator"]["targets"]["sm"]
+    return model_data
+
+
+def prepare_no_income_no_schooling_scl_wages(model_data):
+    del model_data["calibrated"]["hat_c"]
+    model_data["hooks"]["hat_c"] = lambda x: 0
+    del model_data["calibrator"]["targets"]["sf"]
+    del model_data["calibrator"]["targets"]["sm"]
+    model_data["calibrator"]["weights"]["tw"] = 100
     return model_data
 
 
@@ -62,4 +79,6 @@ def mapping():
         "no-schooling-scl-wages": prepare_no_schooling_scl_wages,
         "no-wages": prepare_no_wages,
         "no-income-no-wages": prepare_no_income_no_wages,
+        "no-income-no-schooling": prepare_no_income_no_schooling,
+        "no-income-no-schooling-scl-wages": prepare_no_income_no_schooling_scl_wages,
     }
