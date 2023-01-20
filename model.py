@@ -119,7 +119,6 @@ def make_model_data(income_group, calibration_init=None, preparation_callback=No
             "hat_c": [None, (0, None)],  # adjusted subsistence term
             "varphi": [None, (1e-3, None)],  # leisure preference scale
             "beta_f": [None, (1e-3, None)],  # female's schooling cost
-            # "beta_m": [None, (1e-3, None)],  # male's schooling cost
             # relative productivities
             "Z_ArAh": [None, (1e-3, None)],
             "Z_MrMh": [None, (1e-3, None)],
@@ -197,11 +196,6 @@ def make_model_data(income_group, calibration_init=None, preparation_callback=No
             lambda d, tw, sf, sm: make_subsistence_consumption_share(d)(tw, sf, sm)
             * data["calibrator"]["weights"]["gamma"],
         ],
-        # internal solutions
-        # "F": [
-        #     0,
-        #     lambda d, tw, sf, sm: np.linalg.norm(make_foc(d)(np.asarray([tw, sf, sm]))),
-        # ],
     }
 
     data["calibrator"]["targets"] = targets
@@ -1441,7 +1435,7 @@ def calibrate_if_not_exists_and_save(
             lambda x: sum(errors(x)),
             [v for v in initializers.values()],
             # bounds=bounds,  # for L-BFGS-B
-            method="BFGS",
+            method="Nelder-Mead",
             options={
                 "disp": True,
                 "bounds": bounds,  # for Nelder-Mead

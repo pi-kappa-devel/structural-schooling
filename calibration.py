@@ -8,7 +8,7 @@ Solver file for "Why does the Schooling Gap Close when the Wage Gap Remains Cons
    schooling. Firms choose effective labor units.
 """
 
-import copy
+import json
 
 import calibration_mode
 import model
@@ -16,60 +16,27 @@ import model
 adaptive_optimizer_initialization = True
 verbose = True
 
-initializers = {
-    "low": {
-        "hat_c": 11.136503727229076,
-        "varphi": 1.721467380725994,
-        "beta_f": 0.383367250170399,
-        "Z_ArAh": 0.11947311619961784,
-        "Z_MrMh": 0.92640548905085,
-        "Z_SrSh": 0.15103457470449383,
-        "Z_ArSr": 1.4131381675366543,
-        "Z_MrSr": 13.53463375468326,
-    },
-    "middle": {
-        "hat_c": 5.937606000914109,
-        "varphi": 1.7195629729163815,
-        "beta_f": 0.40735231284001816,
-        "Z_ArAh": 0.12397402049398179,
-        "Z_MrMh": 2.0783552343617036,
-        "Z_SrSh": 0.1670283484738908,
-        "Z_ArSr": 5.6793908085572244,
-        "Z_MrSr": 13.521797777088413,
-    },
-    "high": {
-        "hat_c": 1.3673004612957913,
-        "varphi": 1.4606948832351896,
-        "beta_f": 0.5671970749855282,
-        "Z_ArAh": 0.23306653682422618,
-        "Z_MrMh": 4.204202203663769,
-        "Z_SrSh": 0.210277998867694,
-        "Z_ArSr": 17.992392497711336,
-        "Z_MrSr": 7.013943163527987,
-    },
-    "all": {
-        "hat_c": 11.188021966353041,
-        "varphi": 1.6067459794916912,
-        "beta_f": 0.4598589272755898,
-        "Z_ArAh": 0.1204204304831647,
-        "Z_MrMh": 2.0214064754297816,
-        "Z_SrSh": 0.17948743189748145,
-        "Z_ArSr": 3.125525466231803,
-        "Z_MrSr": 11.504307530807974,
-    },
-}
 
-calibration_modes = calibration_mode.mapping()
-calibration_modes = {
-    k: v for k, v in calibration_modes.items() if k == "no-schooling-scl-wages"
-}
+def calibrate(mode):
+    """Calibrate the model for a given mode."""
+    calibration_modes = calibration_mode.mapping()
+    if mode not in calibration_modes:
+        raise ValueError(f"Calibration mode {mode} not found.")
 
-output = {}
-for mode, preparation_callback in calibration_modes.items():
-    output[mode] = {}
+    initializers = {}
+    with open("initializers.json") as f:
+        data = json.load(f)
+        if mode in data:
+            initializers = data[mode]
+        else:
+            initializers = data["default"]
+
+    if initializers is None:
+        raise ValueError("Failed to load initializing data.")
+
+    output = {}
     calibration_results = {}
-    for key, invariant_initializer in initializers.items():
-        initializer = copy.deepcopy(invariant_initializer)
+    for key, initializer in initializers.items():
         if "no-income" in mode:
             del initializer["hat_c"]
         calibration_results[key] = model.calibrate_if_not_exists_and_save(
@@ -84,8 +51,8 @@ for mode, preparation_callback in calibration_modes.items():
         solved_model = model.get_calibrated_model_solution(
             key, filename, initializer.keys(), preparation_callback=preparation_callback
         )
-        names = list(initializer.keys())
-        output[mode][key] = {
+        variables = list(initializer.keys())
+        output[key] = {
             "values": [
                 *calibration_results[key]["x"],
                 *solved_model["optimizer"]["x0"],
@@ -93,21 +60,46 @@ for mode, preparation_callback in calibration_modes.items():
                 calibration_results[key]["fun"],
                 calibration_results[key]["status"],
             ],
-            "initializer": [*names, "tw", "sf", "sm", "ts", "error", "status"],
+            "variables": [*variables, "tw", "sf", "sm", "ts", "error", "status"],
         }
+        if "no-income" in mode:
+            output[key]["values"] = [0, *output[key]["values"]]
+            output[key]["variables"] = ["hat_c", *output[key]["variables"]]
+
+    return output
 
 
-results = ""
-for mode, calibration_results in output.items():
-    results = results + f"calibration_mode = {mode}\n"
-    names = calibration_results["all"]["initializer"]
-    results = results + f"| group  | {' | '.join([f'{key:7}' for key in names])} |\n"
-    for key, initializer in initializers.items():
-        masks = ["{:>7.4f}" for _ in names]
-        values = [
-            masks[k].format(v) for k, v in enumerate(calibration_results[key]["values"])
-        ]
-        results = results + f"| {key:6} | {' | '.join(values)} |\n"
-with open("../tmp/calibrations-summary.org", "w") as f:
-    f.write(results)
-print(results)
+def print_calibrated_values(output):
+    """Print calibrated values."""
+    results = ""
+    for mode, calibration_results in output.items():
+        results = results + f"calibration_mode = {mode}\n"
+        variables = calibration_results["all"]["variables"]
+        results += f"| group  | {' | '.join([f'{key:7}' for key in variables])} |\n"
+        masks = ["{:>7.4f}" for _ in variables]
+        for group in initializers.keys():
+            values = [
+                masks[k].format(v)
+                for k, v in enumerate(calibration_results[group]["values"])
+            ]
+            results = results + f"| {group:6} | {' | '.join(values)} |\n"
+    with open("../tmp/calibrations-summary.org", "w") as f:
+        f.write(results)
+    print(results)
+
+
+initializers = {}
+with open("initializers.json") as f:
+    initializers = json.load(f)
+
+
+calibration_modes = calibration_mode.mapping()
+calibration_modes = {
+    k: v for k, v in calibration_modes.items() if k != "rel-schooling-no-wages"
+}
+
+output = {}
+for mode, preparation_callback in calibration_modes.items():
+    output[mode] = calibrate(mode)
+
+print_calibrated_values(output)
