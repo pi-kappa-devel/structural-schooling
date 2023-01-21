@@ -18,6 +18,24 @@ import os
 import pickle
 import re
 import scipy
+import scipy.optimize
+import sys
+
+
+def setup_model_logger(name=None, filename=None):
+    """Setup logger for model."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    handler = (
+        logging.StreamHandler(sys.stdout)
+        if filename is None
+        else logging.FileHandler(filename)
+    )
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    return logger
 
 
 def make_discounter_fdf(model_data):
@@ -49,7 +67,10 @@ def make_hc_fdf(model_data):
 
 
 def make_model_data(
-    income_group, calibration_init=None, parameters_init=None, preparation_callback=None
+    income_group,
+    calibration_init=None,
+    parameters_init=None,
+    preparation_callback=None,
 ):
     """Prepare model data for an income group.
 
@@ -261,7 +282,7 @@ def set_calibrated_data(data, calibration_data, verbose=False):
     for k in calibration_data.keys():
         data["calibrated"][k][0] = calibration_data[k]
     if verbose:
-        logging.info(f"Calibrated Values = {calibration_data}")
+        logger.info(f"Calibrated Values = {calibration_data}")
 
     return data
 
@@ -1196,11 +1217,11 @@ def make_foc(model_data):
         Lm = make_male_total_time_allocation(model_data)(y[0], y[1], y[2])
         gamma = make_subsistence_consumption_share(model_data)(y[0], y[1], y[2])
         if np.abs(Lf - 1) > 1e-2:
-            logging.warning(f"Inaccurate total female time allocation, Lf = {Lf}")
+            logger.warning(f"Inaccurate total female time allocation, Lf = {Lf}")
         if np.abs(Lm - 1) > 1e-2:
-            logging.warning(f"Inaccurate total male time allocation, Lm = {Lm}")
+            logger.warning(f"Inaccurate total male time allocation, Lm = {Lm}")
         if gamma < 0 or gamma > 1:
-            logging.warning(f"Inaccurate subsistence share, gamma = {gamma}")
+            logger.warning(f"Inaccurate subsistence share, gamma = {gamma}")
 
         return np.asarray(
             [f1(y[0], y[1], y[2]), f2(y[0], y[1], y[2]), f3(y[0], y[1], y[2])]
@@ -1292,13 +1313,13 @@ def solve_foc(model_data, y):
         n = n + 1
         hlen = np.linalg.norm(yn - y)
         converged = Flen <= Ftol or hlen <= htol
-        logging.info(
+        logger.info(
             f"n = {n: >2} |F| = {Flen:4.4f} |h| = {hlen:4.4f} "
             + f"y = {y[0]:4.2f} {y[1]:4.2f} {y[2]:4.2f}]"
         )
     if not converged:
-        logging.warning("Household optimization solver did not converge")
-    logging.info(f"Returning tw, sf, sm = {y} with foc = {Fv}")
+        logger.warning("Household optimization solver did not converge")
+    logger.info(f"Returning tw, sf, sm = {y} with foc = {Fv}")
 
     return y
 
@@ -1318,7 +1339,7 @@ def make_calibration_objective(
             model_data, dict(zip(calibrated_parameters, y)), verbose=verbose
         )
 
-        logging.info("Numerically approximating model's solution:")
+        logger.info("Numerically approximating model's solution:")
         y = solve_foc(model_data, np.asarray(model_data["optimizer"]["x0"]))
         ae = [
             np.abs(v[0]() - v[1](model_data, y[0], y[1], y[2]))
@@ -1329,8 +1350,8 @@ def make_calibration_objective(
             min_sae = sae
             if adaptive_optimizer_initialization:
                 model_data["optimizer"]["x0"] = y.tolist()
-        logging.info(f"Calibration Errors = {ae}")
-        logging.info(f"Calibration Sum of Absolute Errors = {sae}")
+        logger.info(f"Calibration Errors = {ae}")
+        logger.info(f"Calibration Sum of Absolute Errors = {sae}")
 
         return ae
 
@@ -1373,10 +1394,10 @@ def calibrate_if_not_exists_and_save(
     )
     model_data = set_calibrated_data(model_data, initializers, verbose=verbose)
 
-    logging.info(
+    logger.info(
         f"Calibrating {calibration_mode} with {income_group.capitalize()} Income Data"
     )
-    logging.info(json_model_data(model_data))
+    logger.info(json_model_data(model_data))
 
     errors = make_calibration_objective(
         model_data,

@@ -31,7 +31,6 @@ try:
     )
 except getopt.GetoptError as err:
     print("Error parsing input. Expected usage:\n", usage_help)
-    print(err)
     sys.exit(2)
 
 modes = []
@@ -48,8 +47,7 @@ for opt, arg in opts:
         if arg == "all":
             modes = calibration_mode.mapping().keys()
         else:
-            modes = arg
-        print(modes)
+            modes = [arg]
     elif opt in ("-i", "--input"):
         initialization_file = arg
     elif opt in ("-p", "--parameters"):
@@ -71,12 +69,8 @@ def calibrate(mode):
     filename = f"log/{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{mode}.log"
     if not os.path.exists(filename):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-    logging.basicConfig(
-        filename=filename,
-        level=logging.DEBUG,
-        force=True,
-        format="%(levelname)s: %(message)s",
-    )
+    print(f"Logging {mode} to {filename}")
+    model.logger = model.setup_model_logger(mode, filename)
 
     initializers = {}
     with open("initializers.json") as f:
