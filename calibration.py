@@ -34,7 +34,7 @@ except getopt.GetoptError as err:
     print(err)
     sys.exit(2)
 
-modes = ["no-schooling"]
+modes = []
 initialization_file = "initializers.json"
 targets = "parameters.json"
 adaptive_optimizer_initialization = True
@@ -134,8 +134,8 @@ def calibrate(mode):
     return output
 
 
-def print_calibrated_values(output):
-    """Print calibrated values."""
+def print_results(output):
+    """Print calibration results."""
     results = ""
     for mode, calibration_results in output.items():
         results = results + f"calibration_mode = {mode}\n"
@@ -153,6 +153,14 @@ def print_calibrated_values(output):
     print(results)
 
 
+def get_calibrated_values(output, mode, group):
+    """Get calibrated values."""
+    return {
+        output[mode][group]["variables"][i]: output[mode][group]["values"][i]
+        for i in range(8)
+    }
+
+
 initializers = {}
 with open("initializers.json") as f:
     initializers = json.load(f)
@@ -165,4 +173,4 @@ output = {}
 for mode, preparation_callback in calibration_modes.items():
     output[mode] = calibrate(mode)
 
-print_calibrated_values(output)
+print_results(output)
