@@ -1417,7 +1417,7 @@ def calibrate_if_not_exists_and_save(
             method="Nelder-Mead",
             options={
                 "disp": True,
-                "bounds": bounds,  # for Nelder-Mead
+                # "bounds": bounds,
                 "maxiter": model_data["calibrator"]["maxiter"],
                 "adaptive": True,
             },

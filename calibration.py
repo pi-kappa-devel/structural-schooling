@@ -66,7 +66,7 @@ def calibrate(mode):
     calibration_modes = calibration_mode.mapping()
     if mode not in calibration_modes:
         raise ValueError(f"Calibration mode {mode} not found.")
-    filename = f"log/{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{mode}.log"
+    filename = f"log.{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}/{mode}.log"
     if not os.path.exists(filename):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
     print(f"Logging {mode} to {filename}")

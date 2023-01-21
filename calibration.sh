@@ -10,6 +10,9 @@
 #SBATCH --mail-type=NONE
 #SBATCH --account=agmisc
 
+spack load python@3.9.9%gcc@11.2.0 arch=linux-scientific7-skylake_avx512
+spack load py-numpy@1.22.1%gcc@11.2.0 arch=linux-scientific7-skylake_avx512
+spack load py-scipy@1.7.3%gcc@11.2.0 arch=linux-scientific7-skylake_avx512
 
 # Number of processes to be simultaneously executed
 export procs=`expr $(nproc --all)`
