@@ -1418,8 +1418,7 @@ def calibrate_if_not_exists_and_save(
             options={
                 "disp": True,
                 # "bounds": bounds,
-                "maxiter": model_data["calibrator"]["maxiter"],
-                "adaptive": True,
+                "maxiter": model_data["calibrator"]["maxiter"]
             },
         )
         save_calibration_if_not_exists(filename, calibration_results)
