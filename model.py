@@ -11,7 +11,6 @@ Income Comparisons?".
 """
 
 import json
-import logging
 import math as m
 import numpy as np
 import os
@@ -19,23 +18,8 @@ import pickle
 import re
 import scipy
 import scipy.optimize
-import sys
 
-
-def setup_model_logger(name=None, filename=None):
-    """Setup logger for model."""
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    handler = (
-        logging.StreamHandler(sys.stdout)
-        if filename is None
-        else logging.FileHandler(filename)
-    )
-    formatter = logging.Formatter("%(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    return logger
+import config
 
 
 def make_discounter_fdf(model_data):
@@ -52,7 +36,7 @@ def make_discounter_fdf(model_data):
     return {"d": d, "dd": lambda s: -np.exp(-rho * s)}
 
 
-def make_hc_fdf(model_data):
+def make_human_capital_fdf(model_data):
     """Prepare human capital function and derivative.
 
     See equation (C.6).
@@ -66,12 +50,26 @@ def make_hc_fdf(model_data):
     return {"h": H, "dh": lambda s: H(s) * zeta * np.power(s, -nu)}
 
 
-def make_model_data(
-    income_group,
-    calibration_init=None,
-    parameters_init=None,
-    preparation_callback=None,
-):
+def set_calibrated_data(data, calibration_data):
+    """Set new calibration parameters.
+
+    Used to set calibration parameters from either a list or a dictionary. The argument
+    `calibration_data` is expected to be a dictionary, the order of parameters does not matter.
+
+    Args:
+        data (dict): Model data.
+        calibration_data (dict): New calibrated parameters to be used.
+    """
+    # this also checks if all parameters are set
+    for k in data["calibrated"].keys():
+        data["calibrated"][k][0] = calibration_data[k]
+    if data["config"]["verbose"]:
+        data["config"]["logger"].info(f"Calibrated Values = {calibration_data}")
+
+    return data
+
+
+def make_model_data(income_group, config_init):
     """Prepare model data for an income group.
 
     Expected to be used for constructing data for model calibrations.
@@ -79,9 +77,7 @@ def make_model_data(
     Args:
         income_group (str): Income group string, among "low", "middle", "high",
             and "all".
-        calibration_init (dict): Initialization values for calibrated parameters.
-        parameters_init (dict): Initialization values for fixed parameters.
-        preparation_callback (function): Function to be called for preparing the data.
+        config_init (dict): Configuration dictionary.
     """
     sectors = ["A", "M", "S"]
     technologies = ["h", "r"]
@@ -89,7 +85,7 @@ def make_model_data(
 
     def make_labor_target(gender, index):
         def data():
-            return parameters_init[income_group][f"L{gender}_{index}"]
+            return config_init["parameters"][income_group][f"L{gender}_{index}"]
 
         if gender == "f":
 
@@ -106,8 +102,8 @@ def make_model_data(
     def make_within_gender_labor_ratio_target(gender, over, under):
         def data():
             return (
-                parameters_init[income_group][f"L{gender}_{over}"]
-                / parameters_init[income_group][f"L{gender}_{under}"]
+                config_init["parameters"][income_group][f"L{gender}_{over}"]
+                / config_init["parameters"][income_group][f"L{gender}_{under}"]
             )
 
         if gender == "f":
@@ -127,8 +123,8 @@ def make_model_data(
         return [data, prediction]
 
     weights = {
-        "sf": 1 / parameters_init[income_group]["T"],
-        "sm": 1 / parameters_init[income_group]["T"],
+        "sf": 1 / config_init["parameters"][income_group]["T"],
+        "sm": 1 / config_init["parameters"][income_group]["T"],
         "tw": 1,
         "gamma": 1,
     }
@@ -155,23 +151,28 @@ def make_model_data(
             "nu": 0.58,  # log human capital curvature
             "zeta": 0.32,  # log human capital scale
             "rho": 0.04,  # subjective discount factor
-            "tbeta": parameters_init[income_group][
+            "tbeta": config_init["parameters"][income_group][
                 "tbeta"
             ],  # modern services productivity
             "Lf": 1.0,  # female's time endowment
             "Lm": 1.0,  # male's time endowment
-            "T": parameters_init[income_group]["T"],  # life expectancy
+            "T": config_init["parameters"][income_group]["T"],  # life expectancy
             "Z_Sr": 1.0,  # modern services productivity
         },
         "sectors": sectors,
         "technologies": technologies,
         "income_groups": income_groups,
-        "calibrator": {"weights": weights, "targets": None, "maxiter": 10 ** 4},
+        "calibrator": {
+            "weights": weights,
+            "targets": None,
+            "method": "Nelder-Mead",
+            "maxiter": 10 ** 4,
+        },
         "optimizer": {
             "x0": [
-                parameters_init[income_group]["tw"],
-                parameters_init[income_group]["sf"],
-                parameters_init[income_group]["sm"],
+                config_init["parameters"][income_group]["tw"],
+                config_init["parameters"][income_group]["sf"],
+                config_init["parameters"][income_group]["sm"],
             ],
             "step": 1e-10,
             "maxn": 35,
@@ -195,24 +196,24 @@ def make_model_data(
         "Lf_l": make_labor_target("f", "l"),
         # schooling years
         "sf": [
-            lambda: parameters_init[income_group]["sf"]
+            lambda: config_init["parameters"][income_group]["sf"]
             * data["calibrator"]["weights"]["sf"],
             lambda d, tw, sf, sm: sf * data["calibrator"]["weights"]["sf"],
         ],
         "sm": [
-            lambda: parameters_init[income_group]["sm"]
+            lambda: config_init["parameters"][income_group]["sm"]
             * data["calibrator"]["weights"]["sm"],
             lambda d, tw, sf, sm: sm * data["calibrator"]["weights"]["sm"],
         ],
         # wage ratio
         "tw": [
-            lambda: parameters_init[income_group]["tw"]
+            lambda: config_init["parameters"][income_group]["tw"]
             * data["calibrator"]["weights"]["tw"],
             lambda d, tw, sf, sm: tw * data["calibrator"]["weights"]["tw"],
         ],
         # subsistence share
         "gamma": [
-            lambda: parameters_init[income_group]["gamma"]
+            lambda: config_init["parameters"][income_group]["gamma"]
             * data["calibrator"]["weights"]["gamma"],
             lambda d, tw, sf, sm: make_subsistence_consumption_share(d)(tw, sf, sm)
             * data["calibrator"]["weights"]["gamma"],
@@ -223,19 +224,21 @@ def make_model_data(
 
     def calculate_labor_share(index):
         d = make_discounter_fdf(data)["d"]
-        td = d(parameters_init[income_group]["sf"]) / d(
-            parameters_init[income_group]["sm"]
+        td = d(config_init["parameters"][income_group]["sf"]) / d(
+            config_init["parameters"][income_group]["sm"]
         )
-        H = make_hc_fdf(data)["h"]
-        tH = H(parameters_init[income_group]["sf"]) / H(
-            parameters_init[income_group]["sm"]
+        H = make_human_capital_fdf(data)["h"]
+        tH = H(config_init["parameters"][income_group]["sf"]) / H(
+            config_init["parameters"][income_group]["sm"]
         )
         tL = (
-            parameters_init[income_group][f"Lf_{index}"]
-            / parameters_init[income_group][f"Lm_{index}"]
+            config_init["parameters"][income_group][f"Lf_{index}"]
+            / config_init["parameters"][income_group][f"Lm_{index}"]
         )
         eta = data["fixed"]["eta_l"] if index == "l" else data["fixed"]["eta"]
-        txi = parameters_init[income_group]["tw"] * td * tH * (tL ** (1 / eta))
+        txi = (
+            config_init["parameters"][income_group]["tw"] * td * tH * (tL ** (1 / eta))
+        )
         return txi / (1 + txi)
 
     data["fixed"]["xi_Ah"] = calculate_labor_share(
@@ -258,36 +261,18 @@ def make_model_data(
     )  # female's share in modern services
     data["fixed"]["xi_l"] = calculate_labor_share("l")  # female's share in leisure
 
-    if calibration_init:
-        # this also checks if all parameters are initialized
-        for k in data["calibrated"].keys():
-            data["calibrated"][k][0] = calibration_init[k]
+    if config_init["preparation_callback"]:
+        data = (config_init["preparation_callback"])(data)
 
-    if preparation_callback:
-        data = preparation_callback(data)
+    data["config"] = config_init
 
-    return data
-
-
-def set_calibrated_data(data, calibration_data, verbose=False):
-    """Set new calibration parameters.
-
-    Used to set calibration parameters from either a list or a dictionary. The argument
-    `calibration_data` is expected to be a dictionary, the order of parameters does not matter.
-
-    Args:
-        data (dict): Model data.
-        calibration_data (dict): New calibrated parameters to be used.
-    """
-    for k in calibration_data.keys():
-        data["calibrated"][k][0] = calibration_data[k]
-    if verbose:
-        logger.info(f"Calibrated Values = {calibration_data}")
+    if config_init["initializers"][income_group] is not None:
+        data = set_calibrated_data(data, config_init["initializers"][income_group])
 
     return data
 
 
-def get_calibration_bounds(data, keys):
+def get_calibration_bounds(data):
     """Get the calibration parameter bounds.
 
     Returns a list of tuples with lower and upper bounds for the calibrated variables.
@@ -296,7 +281,7 @@ def get_calibration_bounds(data, keys):
         data (dict): Model data.
         keys (list): List of calibrated parameter names.
     """
-    bounds = [data["calibrated"][k][1] for k in keys]
+    bounds = [data["calibrated"][k][1] for k in data["calibrated"].keys()]
 
     return bounds
 
@@ -325,12 +310,17 @@ def update_model_data(data, income_group, calibration_init):
 
 def json_model_data(model_data):
     """Indented model data string."""
+    logger = model_data["config"]["logger"]
+    del model_data["config"]["logger"]
 
     class encoder(json.JSONEncoder):
         def default(self, o):
             return o.__dict__
 
-    return json.dumps(model_data, indent=2, cls=encoder)
+    dump = json.dumps(model_data, indent=2, cls=encoder)
+    model_data["config"]["logger"] = logger
+
+    return dump
 
 
 def make_working_life(model_data):
@@ -379,7 +369,7 @@ def make_female_wage_bill(model_data, indices):
 
     See equations (B.4), (C.18), and (C.32).
     """
-    h = make_hc_fdf(model_data)["h"]
+    h = make_human_capital_fdf(model_data)["h"]
     d = make_discounter_fdf(model_data)["d"]
 
     if indices == "l":
@@ -525,7 +515,7 @@ def make_relative_consumption_expenditure(model_data, over, under):
         )
 
     # default case
-    h = make_hc_fdf(model_data)["h"]
+    h = make_human_capital_fdf(model_data)["h"]
     d = make_discounter_fdf(model_data)["d"]
     eta = model_data["fixed"]["eta"]
     sigma = model_data["fixed"]["sigma"]
@@ -685,7 +675,7 @@ def make_implicit_female_traditional_technology_coefficient(model_data, sector):
         Eihim = make_relative_consumption_expenditure(model_data, im, ih)
         Ei = make_sectoral_expenditure_share_of_consumption(model_data, sector)
         Iim = make_female_wage_bill(model_data, im)
-        h = make_hc_fdf(model_data)["h"]
+        h = make_human_capital_fdf(model_data)["h"]
         Rimih = make_female_labor_ratio(model_data, im, ih)
 
         return (
@@ -1067,7 +1057,7 @@ def make_female_total_wage_bill(model_data):
 
     See appendix's equation (D.19).
     """
-    h = make_hc_fdf(model_data)["h"]
+    h = make_human_capital_fdf(model_data)["h"]
     d = make_discounter_fdf(model_data)["d"]
 
     def If_L(tw, sf, sm):
@@ -1109,7 +1099,7 @@ def make_female_schooling_condition(model_data, index):
     """
 
     def schooling(tw, sf, sm):
-        hc_fdf = make_hc_fdf(model_data)
+        hc_fdf = make_human_capital_fdf(model_data)
         d_fdf = make_discounter_fdf(model_data)
         delta = make_working_life(model_data)
         g = hc_fdf["dh"](sf) / hc_fdf["h"](sf) + d_fdf["dd"](sf) / d_fdf["d"](sf)
@@ -1144,7 +1134,7 @@ def make_male_schooling_condition(model_data, index):
     """
 
     def schooling(tw, sf, sm):
-        hc_fdf = make_hc_fdf(model_data)
+        hc_fdf = make_human_capital_fdf(model_data)
         d_fdf = make_discounter_fdf(model_data)
         delta = make_working_life(model_data)
         g = hc_fdf["dh"](sm) / hc_fdf["h"](sm) + d_fdf["dd"](sm) / d_fdf["d"](sm)
@@ -1179,7 +1169,7 @@ def make_schooling_condition_ratio(model_data, index):
     """
 
     def schooling(tw, sf, sm):
-        hc_fdf = make_hc_fdf(model_data)
+        hc_fdf = make_human_capital_fdf(model_data)
         d_fdf = make_discounter_fdf(model_data)
         dWf = make_female_lifetime_schooling_cost_fdf(model_data)["dW"]
         dWm = make_male_lifetime_schooling_cost_fdf(model_data)["dW"]
@@ -1217,11 +1207,17 @@ def make_foc(model_data):
         Lm = make_male_total_time_allocation(model_data)(y[0], y[1], y[2])
         gamma = make_subsistence_consumption_share(model_data)(y[0], y[1], y[2])
         if np.abs(Lf - 1) > 1e-2:
-            logger.warning(f"Inaccurate total female time allocation, Lf = {Lf}")
+            model_data["logger"].warning(
+                f"Inaccurate total female time allocation, Lf = {Lf}"
+            )
         if np.abs(Lm - 1) > 1e-2:
-            logger.warning(f"Inaccurate total male time allocation, Lm = {Lm}")
+            model_data["logger"].warning(
+                f"Inaccurate total male time allocation, Lm = {Lm}"
+            )
         if gamma < 0 or gamma > 1:
-            logger.warning(f"Inaccurate subsistence share, gamma = {gamma}")
+            model_data["logger"].warning(
+                f"Inaccurate subsistence share, gamma = {gamma}"
+            )
 
         return np.asarray(
             [f1(y[0], y[1], y[2]), f2(y[0], y[1], y[2]), f3(y[0], y[1], y[2])]
@@ -1299,6 +1295,8 @@ def solve_foc(model_data, y):
         while not stepped and alam > 1e-6:
             alam = alam / 10
             yn = y + alam * np.array(h).T
+            if np.any(yn < 0):
+                continue
             try:
                 Fvn = F(yn)
                 Jvn = J(yn)
@@ -1313,33 +1311,32 @@ def solve_foc(model_data, y):
         n = n + 1
         hlen = np.linalg.norm(yn - y)
         converged = Flen <= Ftol or hlen <= htol
-        logger.info(
+        model_data["config"]["logger"].info(
             f"n = {n: >2} |F| = {Flen:4.4f} |h| = {hlen:4.4f} "
             + f"y = {y[0]:4.2f} {y[1]:4.2f} {y[2]:4.2f}]"
         )
     if not converged:
-        logger.warning("Household optimization solver did not converge")
-    logger.info(f"Returning tw, sf, sm = {y} with foc = {Fv}")
+        model_data["config"]["logger"].warning(
+            "Household optimization solver did not converge"
+        )
+    model_data["config"]["logger"].info(f"Returning tw, sf, sm = {y} with foc = {Fv}")
 
     return y
 
 
-def make_calibration_objective(
-    model_data,
-    calibrated_parameters,
-    adaptive_optimizer_initialization=False,
-    verbose=False,
-):
+def make_calibration_objective(model_data):
     """Prepare calibration function."""
     min_sae = 100
 
     def errors(y):
         nonlocal model_data, min_sae
         model_data = set_calibrated_data(
-            model_data, dict(zip(calibrated_parameters, y)), verbose=verbose
+            model_data, dict(zip(model_data["calibrated"].keys(), y))
         )
 
-        logger.info("Numerically approximating model's solution:")
+        model_data["config"]["logger"].info(
+            "Numerically approximating model's solution:"
+        )
         y = solve_foc(model_data, np.asarray(model_data["optimizer"]["x0"]))
         ae = [
             np.abs(v[0]() - v[1](model_data, y[0], y[1], y[2]))
@@ -1348,10 +1345,12 @@ def make_calibration_objective(
         sae = sum(ae)
         if sae < min_sae:
             min_sae = sae
-            if adaptive_optimizer_initialization:
+            if model_data["config"]["adaptive_optimizer_initialization"]:
                 model_data["optimizer"]["x0"] = y.tolist()
-        logger.info(f"Calibration Errors = {ae}")
-        logger.info(f"Calibration Sum of Absolute Errors = {sae}")
+        model_data["config"]["logger"].info(f"Calibration Errors = {ae}")
+        model_data["config"]["logger"].info(
+            f"Calibration Sum of Absolute Errors = {sae}"
+        )
 
         return ae
 
@@ -1377,70 +1376,33 @@ def load_calibration(filename):
     return calibration_results
 
 
-def calibrate_if_not_exists_and_save(
-    calibration_mode,
-    income_group,
-    initializers,
-    parameters,
-    adaptive_optimizer_initialization=False,
-    verbose=False,
-    preparation_callback=None,
-):
+def calibrate_if_not_exists_and_save(calibration_mode, income_group, config_init):
     """Calibrate the model and save the results."""
-    model_data = make_model_data(
-        income_group,
-        parameters_init=parameters,
-        preparation_callback=preparation_callback,
-    )
-    model_data = set_calibrated_data(model_data, initializers, verbose=verbose)
+    model_data = make_model_data(income_group, config_init)
 
-    logger.info(
+    model_data["config"]["logger"].info(
         f"Calibrating {calibration_mode} with {income_group.capitalize()} Income Data"
     )
-    logger.info(json_model_data(model_data))
+    model_data["config"]["logger"].info(json_model_data(model_data))
 
-    errors = make_calibration_objective(
-        model_data,
-        initializers.keys(),
-        adaptive_optimizer_initialization=adaptive_optimizer_initialization,
-        verbose=verbose,
-    )
-    bounds = get_calibration_bounds(model_data, initializers.keys())
-    calibration_results = {}
+    errors = make_calibration_objective(model_data)
+    bounds = get_calibration_bounds(model_data)
+    model_data["calibrator"]["results"] = {}
 
-    filename = f"../data/out/{calibration_mode}/{income_group}-income-calibration.pkl"
+    filename = config.make_output_data_filename(model_data["config"], income_group)
     if not os.path.exists(filename):
-        calibration_results = scipy.optimize.minimize(
+        model_data["calibrator"]["results"] = scipy.optimize.minimize(
             lambda x: sum(errors(x)),
-            [v for v in initializers.values()],
-            # bounds=bounds,  # for L-BFGS-B
-            method="Nelder-Mead",
-            options={
-                "disp": True,
-                # "bounds": bounds,
-                "maxiter": model_data["calibrator"]["maxiter"]
-            },
+            [value[0] for value in model_data["calibrated"].values()],
+            bounds=bounds if model_data["calibrator"]["method"] == "L-BFGS-B" else None,
+            method=model_data["calibrator"]["method"],
+            options={"disp": True, "maxiter": model_data["calibrator"]["maxiter"]},
         )
-        save_calibration_if_not_exists(filename, calibration_results)
+        save_calibration_if_not_exists(filename, model_data["calibrator"]["results"])
     else:
-        calibration_results = load_calibration(filename)
-
-    return calibration_results
-
-
-def get_calibrated_model_solution(
-    income_group, filename, initializers, parameters, preparation_callback
-):
-    """Get the saved calibrated model solution."""
-    model_data = make_model_data(
-        income_group,
-        parameters_init=parameters,
-        preparation_callback=preparation_callback,
-    )
-    calibration_results = load_calibration(filename)
-    calibrated_data = dict(zip(initializers, calibration_results["x"]))
-    model_data = set_calibrated_data(model_data, calibrated_data)
-    y = solve_foc(model_data, np.asarray(model_data["optimizer"]["x0"])).tolist()
-    model_data["optimizer"]["x0"] = y
+        model_data["calibrator"]["results"] = load_calibration(filename)
+    model_data["optimizer"]["xstar"] = solve_foc(
+        model_data, np.asarray(model_data["optimizer"]["x0"])
+    ).tolist()
 
     return model_data

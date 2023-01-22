@@ -8,122 +8,38 @@ Solver file for "Why does the Schooling Gap Close when the Wage Gap Remains Cons
    schooling. Firms choose effective labor units.
 """
 
-import datetime
-import getopt
-import json
-import logging
-import os
-import sys
-
 import calibration_mode
+import config
 import model
 
-usage_help = (
-    f"{sys.argv[0]} -m <calibration_modes> -i <initializers.json> -p <parameters.json>"
-    + " -a <adaptive_mode> -v <verbose_mode>"
-)
-
-try:
-    opts, args = getopt.getopt(
-        sys.argv[1:],
-        "hm:i:p:a:v:",
-        ["help", "modes=", "input=", "parameters=", "adaptive=", "verbose="],
-    )
-except getopt.GetoptError as err:
-    print("Error parsing input. Expected usage:\n", usage_help)
-    sys.exit(2)
-
-modes = []
-initialization_file = "initializers.json"
-targets = "parameters.json"
-adaptive_optimizer_initialization = True
-verbose = True
-
-for opt, arg in opts:
-    if opt in ("-h", "--help"):
-        print(usage_help)
-        sys.exit()
-    elif opt in ("-m", "--modes"):
-        if arg == "all":
-            modes = calibration_mode.mapping().keys()
-        else:
-            modes = [arg]
-    elif opt in ("-i", "--input"):
-        initialization_file = arg
-    elif opt in ("-p", "--parameters"):
-        targets = arg
-    elif opt in ("-a", "--adaptive"):
-        adaptive_optimizer_initialization = arg
-    elif opt in ("-v", "--verbose"):
-        verbose = arg
-
-if not modes:
-    print("No calibration mode specified. Expected usage:\n", usage_help)
+config_glob, modes = config.make_config_from_input()
 
 
 def calibrate(mode):
     """Calibrate the model for a given mode."""
-    calibration_modes = calibration_mode.mapping()
-    if mode not in calibration_modes:
-        raise ValueError(f"Calibration mode {mode} not found.")
-    filename = f"log.{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}/{mode}.log"
-    if not os.path.exists(filename):
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-    print(f"Logging {mode} to {filename}")
-    model.logger = model.setup_model_logger(mode, filename)
-
-    initializers = {}
-    with open("initializers.json") as f:
-        data = json.load(f)
-        if mode in data:
-            initializers = data[mode]
-        else:
-            initializers = data["default"]
-    if initializers is None:
-        raise ValueError("Failed to load initializing data.")
-
-    parameters = {}
-    with open("parameters.json") as f:
-        parameters = json.load(f)
-    if parameters is None:
-        raise ValueError("Failed to load parameter data.")
+    config_init = config.prepare_mode_config(config_glob, mode)
 
     output = {}
-    calibration_results = {}
-    for key, initializer in initializers.items():
-        if "no-income" in mode:
+    for income_group, initializer in config_init["initializers"].items():
+        if "no-income" in mode and "hat_c" in initializer:
             del initializer["hat_c"]
-        calibration_results[key] = model.calibrate_if_not_exists_and_save(
-            mode,
-            key,
-            initializer,
-            parameters=parameters,
-            adaptive_optimizer_initialization=adaptive_optimizer_initialization,
-            verbose=verbose,
-            preparation_callback=preparation_callback,
+        solved_model = model.calibrate_if_not_exists_and_save(
+            mode, income_group, config_init
         )
-        filename = f"../data/out/{mode}/{key}-income-calibration.pkl"
-        solved_model = model.get_calibrated_model_solution(
-            key,
-            filename,
-            initializer.keys(),
-            parameters=parameters,
-            preparation_callback=preparation_callback,
-        )
-        variables = list(initializer.keys())
-        output[key] = {
+        variables = list(solved_model["calibrated"].keys())
+        output[income_group] = {
             "values": [
-                *calibration_results[key]["x"],
-                *solved_model["optimizer"]["x0"],
-                solved_model["optimizer"]["x0"][1] / solved_model["optimizer"]["x0"][2],
-                calibration_results[key]["fun"],
-                calibration_results[key]["status"],
+                *solved_model["calibrator"]["results"]["x"],
+                *solved_model["optimizer"]["xstar"],
+                solved_model["optimizer"]["xstar"][1] / solved_model["optimizer"]["xstar"][2],
+                solved_model["calibrator"]["results"]["fun"],
+                solved_model["calibrator"]["results"]["status"],
             ],
             "variables": [*variables, "tw", "sf", "sm", "ts", "error", "status"],
         }
         if "no-income" in mode:
-            output[key]["values"] = [0, *output[key]["values"]]
-            output[key]["variables"] = ["hat_c", *output[key]["variables"]]
+            output[income_group]["values"] = [0, *output[income_group]["values"]]
+            output[income_group]["variables"] = ["hat_c", *output[income_group]["variables"]]
 
     return output
 
@@ -153,11 +69,6 @@ def get_calibrated_values(output, mode, group):
         output[mode][group]["variables"][i]: output[mode][group]["values"][i]
         for i in range(8)
     }
-
-
-initializers = {}
-with open("initializers.json") as f:
-    initializers = json.load(f)
 
 
 calibration_modes = calibration_mode.mapping()
