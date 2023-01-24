@@ -11,7 +11,6 @@ Solver file for "Why does the Schooling Gap Close when the Wage Gap Remains Cons
 import calibration_mode
 import config
 import model
-import results
 
 config_glob, modes = config.make_config_from_input()
 
@@ -35,5 +34,3 @@ calibration_modes = {k: v for k, v in calibration_modes.items() if k in modes}
 solutions = {}
 for mode, preparation_callback in calibration_modes.items():
     solutions[mode] = calibrate(mode)
-
-results.make_calibration_summary_table(solutions)
