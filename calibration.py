@@ -18,7 +18,7 @@ config_glob, modes = config.make_config_from_input()
 
 def calibrate(mode):
     """Calibrate the model for a given mode."""
-    config_init = config.prepare_config(config_glob, mode)
+    config_init = config.prepare_mode_config(config_glob, mode)
 
     solution = {}
     for income_group, initializer in config_init["initializers"].items():

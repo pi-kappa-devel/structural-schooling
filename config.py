@@ -61,12 +61,9 @@ def make_config(
 
     config = setup_timestamps(config)
 
-    for path in [output_path, results_path, log_path]:
+    for path in [config["output_path"], config["results_path"], config["log_path"]]:
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
-    config["output_path"] = output_path
-    config["results_path"] = results_path
-    config["log_path"] = log_path
     config["logger"] = None
 
     config["adaptive_optimizer_initialization"] = adaptive_optimizer_initialization
