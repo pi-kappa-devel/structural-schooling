@@ -29,7 +29,7 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
-main_timestamp = "20230122184313"
+main_timestamp = "20230123082253"
 main_income_group = "all"
 main_calibration_mode = "abs-schooling-scl-wages"
 
@@ -89,13 +89,13 @@ def make_relative_expenditure_of_production_share(
         data["fixed"][f"xi_{production_share_index}"] = xif_under
         return model.make_relative_consumption_expenditure(
             data, expenditure_over, expenditure_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def relative_expenditure_of_male(xim_under):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_under
         return model.make_relative_consumption_expenditure(
             data, expenditure_over, expenditure_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     return (
         relative_expenditure_of_female
@@ -123,7 +123,7 @@ def make_relative_expenditure_of_productivity(
         )
         return model.make_relative_consumption_expenditure(
             updated_data, expenditure_over, expenditure_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     return relative_expenditure
 
@@ -141,13 +141,13 @@ def make_expenditure_share_of_production_share(
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_sectoral_expenditure_share_of_consumption(
             data, expenditure_sector
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def expenditure_share_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_sectoral_expenditure_share_of_consumption(
             data, expenditure_sector
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     return (
         expenditure_share_of_female
@@ -171,7 +171,7 @@ def make_expenditure_share_of_productivity(
         )
         return model.make_sectoral_expenditure_share_of_consumption(
             updated_data, expenditure_sector
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     return expenditure_share
 
@@ -188,19 +188,23 @@ def make_wage_bill_of_production_share(
 
     def female_wage_bill_of_female(xif_ip):
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
-        return model.make_female_wage_bill(data, bill_index)(*data["optimizer"]["x0"])
+        return model.make_female_wage_bill(data, bill_index)(
+            *data["optimizer"]["xstar"]
+        )
 
     def female_wage_bill_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
-        return model.make_female_wage_bill(data, bill_index)(*data["optimizer"]["x0"])
+        return model.make_female_wage_bill(data, bill_index)(
+            *data["optimizer"]["xstar"]
+        )
 
     def male_wage_bill_of_female(xif_ip):
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
-        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["x0"])
+        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["xstar"])
 
     def male_wage_bill_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
-        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["x0"])
+        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["xstar"])
 
     if bill_gender == "f" and production_share_gender == "f":
         return female_wage_bill_of_female
@@ -222,10 +226,12 @@ def make_wage_bill_of_productivity(
     data = copy.deepcopy(invariant_solution)
 
     def female_wage_bill(_):
-        return model.make_female_wage_bill(data, bill_index)(*data["optimizer"]["x0"])
+        return model.make_female_wage_bill(data, bill_index)(
+            *data["optimizer"]["xstar"]
+        )
 
     def male_wage_bill(_):
-        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["x0"])
+        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["xstar"])
 
     if bill_gender == "f":
         return female_wage_bill
@@ -247,25 +253,25 @@ def make_time_allocation_ratio_of_production_share(
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_female_flow_time_allocation_ratio(
             data, allocation_over, allocation_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def female_flow_time_allocation_ratio_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_female_flow_time_allocation_ratio(
             data, allocation_over, allocation_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def male_flow_time_allocation_ratio_of_female(xif_ip):
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_male_flow_time_allocation_ratio(
             data, allocation_over, allocation_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def male_flow_time_allocation_ratio_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_male_flow_time_allocation_ratio(
             data, allocation_over, allocation_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     if allocation_gender == "f" and production_share_gender == "f":
         return female_flow_time_allocation_ratio_of_female
@@ -296,7 +302,7 @@ def make_time_allocation_ratio_of_productivity(
         )
         return model.make_female_flow_time_allocation_ratio(
             updated_data, allocation_over, allocation_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def male_flow_time_allocation_ratio(Z_ip):
         updated_data = update_data_from_productivity(
@@ -304,7 +310,7 @@ def make_time_allocation_ratio_of_productivity(
         )
         return model.make_male_flow_time_allocation_ratio(
             updated_data, allocation_over, allocation_under
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     if allocation_gender == "f":
         return female_flow_time_allocation_ratio
@@ -325,25 +331,25 @@ def make_time_allocation_share_of_production_share(
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
         return 1 / model.make_aggregate_female_flow_time_allocation_ratio(
             data, allocation_index
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def female_time_allocation_share_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return 1 / model.make_aggregate_female_flow_time_allocation_ratio(
             data, allocation_index
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def male_time_allocation_share_of_female(xif_ip):
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
         return 1 / model.make_aggregate_male_flow_time_allocation_ratio(
             data, allocation_index
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def male_time_allocation_share_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return 1 / model.make_aggregate_male_flow_time_allocation_ratio(
             data, allocation_index
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     if allocation_gender == "f" and production_share_gender == "f":
         return female_time_allocation_share_of_female
@@ -373,7 +379,7 @@ def make_time_allocation_share_of_productivity(
         )
         return 1 / model.make_aggregate_female_flow_time_allocation_ratio(
             updated_data, allocation_index
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     def male_time_allocation_share(Z_ip):
         updated_data = update_data_from_productivity(
@@ -381,7 +387,7 @@ def make_time_allocation_share_of_productivity(
         )
         return 1 / model.make_aggregate_male_flow_time_allocation_ratio(
             updated_data, allocation_index
-        )(*data["optimizer"]["x0"])
+        )(*data["optimizer"]["xstar"])
 
     if allocation_gender == "f":
         return female_time_allocation_share
@@ -397,25 +403,25 @@ def make_modern_share_of_production_share(
     def female_modern_share_of_female(xif_ip):
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_female_modern_production_allocation(data)(
-            *data["optimizer"]["x0"]
+            *data["optimizer"]["xstar"]
         )
 
     def female_modern_share_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_female_modern_production_allocation(data)(
-            *data["optimizer"]["x0"]
+            *data["optimizer"]["xstar"]
         )
 
     def male_modern_share_of_female(xif_ip):
         data["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_male_modern_production_allocation(data)(
-            *data["optimizer"]["x0"]
+            *data["optimizer"]["xstar"]
         )
 
     def male_modern_share_of_male(xim_ip):
         data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_male_modern_production_allocation(data)(
-            *data["optimizer"]["x0"]
+            *data["optimizer"]["xstar"]
         )
 
     if modern_gender == "f" and production_share_gender == "f":
@@ -441,7 +447,7 @@ def make_modern_share_of_productivity(
             data, initial_productivities, productivity_index, Z_ip
         )
         return model.make_female_modern_production_allocation(updated_data)(
-            *data["optimizer"]["x0"]
+            *data["optimizer"]["xstar"]
         )
 
     def male_modern_share(Z_ip):
@@ -449,7 +455,7 @@ def make_modern_share_of_productivity(
             data, initial_productivities, productivity_index, Z_ip
         )
         return model.make_male_modern_production_allocation(updated_data)(
-            *data["optimizer"]["x0"]
+            *data["optimizer"]["xstar"]
         )
 
     if modern_gender == "f":
@@ -679,11 +685,11 @@ def make_labor_radar_figure(invariant_solution):
         for sector in solution["sectors"]:
             index = f"{sector}{technology}"
             Lis = model.make_female_time_allocation_control(solution, index)(
-                *solution["optimizer"]["x0"]
+                *solution["optimizer"]["xstar"]
             )
             controls[f"$L_{{{index}}}$"] = Lis
     controls["$\\ell$"] = model.make_female_time_allocation_control(solution, "l")(
-        *solution["optimizer"]["x0"]
+        *solution["optimizer"]["xstar"]
     )
 
     income_group = solution["income_group"]
@@ -724,23 +730,23 @@ def load_controls(invariant_solution):
 
     controls = {}
     controls["$\\gamma$"] = model.make_subsistence_consumption_share(solution)(
-        *solution["optimizer"]["x0"]
+        *solution["optimizer"]["xstar"]
     )
     controls["$M^{f}$"] = model.make_female_modern_production_allocation(solution)(
-        *solution["optimizer"]["x0"]
+        *solution["optimizer"]["xstar"]
     )
     controls["$\\ell^{f}$"] = model.make_female_time_allocation_control(solution, "l")(
-        *solution["optimizer"]["x0"]
+        *solution["optimizer"]["xstar"]
     )
     controls["$M^{m}$"] = model.make_male_modern_production_allocation(solution)(
-        *solution["optimizer"]["x0"]
+        *solution["optimizer"]["xstar"]
     )
     controls["$\\ell^{m}$"] = model.make_male_time_allocation_control(solution, "l")(
-        *solution["optimizer"]["x0"]
+        *solution["optimizer"]["xstar"]
     )
-    controls["$\\tilde w$"] = solution["optimizer"]["x0"][0]
+    controls["$\\tilde w$"] = solution["optimizer"]["xstar"][0]
     controls["$\\tilde s$"] = (
-        solution["optimizer"]["x0"][1] / solution["optimizer"]["x0"][2]
+        solution["optimizer"]["xstar"][1] / solution["optimizer"]["xstar"][2]
     )
     controls["$\\tilde M$"] = controls["$M^{f}$"] / controls["$M^{m}$"]
 
@@ -934,7 +940,7 @@ def make_calibration_table(solutions):
             mask.format(
                 solution["calibrated"]["beta_f"][0] / solution["fixed"]["tbeta"]
             ),
-            *[mask.format(x) for x in solution["optimizer"]["x0"]],
+            *[mask.format(x) for x in solution["optimizer"]["xstar"]],
         ]
 
         output = output + f"\\textbf{{{income_group}}} & {' & '.join(values)}"
@@ -943,10 +949,47 @@ def make_calibration_table(solutions):
         output = output + "\n"
 
     print(output)
-    with open(
-        f"{solution['config']['results_path']}/calibration-{calibration_mode}.tex", "w"
-    ) as f:
+    results_path = solutions["all"]["config"]["results_path"]
+    with open(f"{results_path}/calibration-{calibration_mode}.tex", "w") as f:
         f.write(output)
+
+
+def make_calibration_summary_table(solutions):
+    """Print calibration results."""
+    table = ""
+    for mode, solution in solutions.items():
+        variables = [
+            *solution['all']["calibrated"].keys(),
+            "tw",
+            "sf",
+            "sm",
+            "ts",
+            "error",
+            "status",
+        ]
+        if "no-income" in mode:
+            variables = ["hat_c", *variables]
+
+        table = table + f"calibration_mode = {mode}\n"
+        table += f"| group  | {' | '.join([f'{var:7}' for var in variables])} |\n"
+        masks = ["{:>7.4f}" for _ in variables]
+        for group, data in solution.items():
+            values = [
+                *data["calibrator"]["results"]["x"],
+                *data["optimizer"]["xstar"],
+                data["optimizer"]["xstar"][1] / data["optimizer"]["xstar"][2],
+                data["calibrator"]["results"]["fun"],
+                data["calibrator"]["results"]["status"],
+            ]
+            if "no-income" in mode:
+                values = [0, *values]
+            values = [masks[k].format(v) for k, v in enumerate(values)]
+            table = table + f"| {group:6} | {' | '.join(values)} |\n"
+
+    print(table)
+    results_path = list(solutions.values())[0]["all"]["config"]["results_path"]
+    with open(f"{results_path}/calibration-summary.org", "w") as f:
+        f.write(table)
 
 
 def prepare_config(mode, timestamp):
@@ -958,24 +1001,27 @@ def prepare_config(mode, timestamp):
     return config.prepare_mode_config(preconfig, mode)
 
 
-# main_config = prepare_config(main_calibration_mode, main_timestamp)
-# main_solution = model.calibrate_and_save_or_load(
-#     main_calibration_mode, main_income_group, main_config
-# )
-# make_production_share_figure(main_solution)
-# make_productivity_figure(main_solution)
+if __name__ == "__main__":
+    main_config = prepare_config(main_calibration_mode, main_timestamp)
+    main_solution = model.calibrate_and_save_or_load(
+        main_calibration_mode, main_income_group, main_config
+    )
+    make_production_share_figure(main_solution)
+    make_productivity_figure(main_solution)
 
-calibration_modes = calibration_mode.mapping()
-for mode, preparation_callback in calibration_modes.items():
-    current_config = prepare_config(mode, main_timestamp)
+    calibration_modes = calibration_mode.mapping()
     solutions = {}
-    for income_group in income_groups:
-        solutions[income_group] = model.calibrate_and_save_or_load(
-            mode, income_group, current_config
-        )
-        solutions[income_group] = load_controls(solutions[income_group])
-        make_labor_radar_figure(solutions[income_group])
-    make_income_and_labor_errors_table(solutions)
-    make_control_income_differences_table(solutions)
-    make_calibration_table(solutions)
-    make_income_and_labor_lollipop_figure(solutions)
+    for mode, preparation_callback in calibration_modes.items():
+        current_config = prepare_config(mode, main_timestamp)
+        solutions[mode] = {}
+        for income_group in income_groups:
+            solutions[mode][income_group] = model.calibrate_and_save_or_load(
+                mode, income_group, current_config
+            )
+            solutions[mode][income_group] = load_controls(solutions[mode][income_group])
+            make_labor_radar_figure(solutions[mode][income_group])
+        make_income_and_labor_errors_table(solutions[mode])
+        make_control_income_differences_table(solutions[mode])
+        make_calibration_table(solutions[mode])
+        make_income_and_labor_lollipop_figure(solutions[mode])
+    make_calibration_summary_table(solutions)
