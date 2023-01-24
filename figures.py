@@ -15,6 +15,7 @@ import model
 import numpy as np
 
 import calibration_mode
+import config
 
 hlinestyle = ":"
 flinestyle = "-"
@@ -28,6 +29,7 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
+main_timestamp = "20230122184313"
 main_income_group = "all"
 main_calibration_mode = "abs-schooling-scl-wages"
 
@@ -555,7 +557,7 @@ def make_production_share_figure(invariant_solution):
     )
 
     plt.tight_layout()
-    filename = "../tmp/production-share.png"
+    filename = f"{invariant_solution['config']['results_path']}/production-share.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -664,7 +666,7 @@ def make_productivity_figure(invariant_solution):
     )
 
     plt.tight_layout()
-    filename = "../tmp/productivity.png"
+    filename = f"{invariant_solution['config']['results_path']}/productivity.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -710,7 +712,8 @@ def make_labor_radar_figure(invariant_solution):
     ax.fill(angles, values, "r", alpha=0.1)
 
     plt.legend(loc="upper right", bbox_to_anchor=(0.1, 0.1)).get_frame().set_alpha(0.0)
-    filename = f"../tmp/radar-{solution['mode']}-{solution['income_group']}.png"
+    results_path = solution["config"]["results_path"]
+    filename = f"{results_path}/radar-{solution['config']['mode']}-{solution['income_group']}.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -805,7 +808,8 @@ def make_income_and_labor_lollipop_figure(solutions):
         )
     )
 
-    filename = f"../tmp/lollipop-{solutions['all']['mode']}.png"
+    results_path = solutions["all"]["config"]["results_path"]
+    filename = f"{results_path}/lollipop-{solutions['all']['config']['mode']}.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -818,7 +822,7 @@ def make_income_and_labor_errors_table(solutions):
         for group, solution in solutions.items()
     }
 
-    calibration_mode = solutions["all"]["mode"]
+    calibration_mode = solutions["all"]["config"]["mode"]
     output = f"calibration_mode = {calibration_mode}\n"
     names = list(controls["all"].keys())
     output = (
@@ -841,7 +845,10 @@ def make_income_and_labor_errors_table(solutions):
         output = output + f"| {income_group:10} | {' | '.join(values)} |\n"
 
     print(output)
-    with open(f"../tmp/labor-errors-{calibration_mode}.org", "w") as f:
+    with open(
+        f"{solutions['all']['config']['results_path']}/labor-errors-{calibration_mode}.org",
+        "w",
+    ) as f:
         f.write(output)
 
 
@@ -856,7 +863,7 @@ def make_control_income_differences_table(solutions):
     def prc(left, right):
         return "{:>7.2f}\\%".format(100 * (right - left) / left)
 
-    calibration_mode = solutions["all"]["mode"]
+    calibration_mode = solutions["all"]["config"]["mode"]
     output = (
         "\\\\ \\midrule\n\\multicolumn{6}{c}{\\textbf{\\Cref{calib:"
         + calibration_mode
@@ -894,13 +901,16 @@ def make_control_income_differences_table(solutions):
         output = output + "\n"
 
     print(output)
-    with open(f"../tmp/prediction-differences-{calibration_mode}.tex", "w") as f:
+    results_path = solutions["all"]["config"]["results_path"]
+    with open(
+        f"{results_path}/prediction-differences-{calibration_mode}.tex", "w"
+    ) as f:
         f.write(output)
 
 
 def make_calibration_table(solutions):
     """Make a table of calibration results."""
-    calibration_mode = solutions["all"]["mode"]
+    calibration_mode = solutions["all"]["config"]["mode"]
     initializers = {k: v[0] for k, v in solutions["all"]["calibrated"].items()}
     output = (
         "\\\\ \\midrule\n\\multicolumn{"
@@ -933,47 +943,39 @@ def make_calibration_table(solutions):
         output = output + "\n"
 
     print(output)
-    with open(f"../tmp/calibration-{calibration_mode}.tex", "w") as f:
+    with open(
+        f"{solution['config']['results_path']}/calibration-{calibration_mode}.tex", "w"
+    ) as f:
         f.write(output)
 
 
-print(f"main_calibration_mode = {main_calibration_mode}")
-filename = (
-    f"../data/out/{main_calibration_mode}/{main_income_group}-income-calibration.pkl"
-)
-main_solution = model.get_calibrated_model_solution(
-    main_income_group,
-    filename,
-    initializer_names,
-    preparation_callback=calibration_modes[main_calibration_mode],
-)
-main_initializers = {k: v[0] for k, v in main_solution["calibrated"].items()}
+def prepare_config(mode, timestamp):
+    """Prepare a configuration dictionary for the model."""
+    print(f"Configuring {mode} from {timestamp}")
+    preconfig = config.preconfigure()
+    preconfig = config.setup_timestamps(preconfig, timestamp)
+    preconfig["log_path"] = None
+    return config.prepare_mode_config(preconfig, mode)
 
-make_production_share_figure(main_solution)
 
-make_productivity_figure(main_solution)
+# main_config = prepare_config(main_calibration_mode, main_timestamp)
+# main_solution = model.calibrate_and_save_or_load(
+#     main_calibration_mode, main_income_group, main_config
+# )
+# make_production_share_figure(main_solution)
+# make_productivity_figure(main_solution)
 
-# for mode, preparation_callback in calibration_modes.items():
-#     if mode == "no-schooling-scl-wages":
-#         continue
-#     print(f"calibration_mode = {mode}")
-#     initializers = copy.deepcopy(main_initializers)
-#     if "no-income" in mode:
-#         del initializers["hat_c"]
-#     solutions = {}
-#     for income_group in income_groups:
-#         print(f"income_group = {income_group}")
-#         filename = f"../data/out/{mode}/{income_group}-income-calibration.pkl"
-#         solutions[income_group] = model.get_calibrated_model_solution(
-#             income_group,
-#             filename,
-#             initializers.keys(),
-#             preparation_callback=calibration_modes[mode],
-#         )
-#         solutions[income_group]["mode"] = mode
-#         solutions[income_group] = load_controls(solutions[income_group])
-#         make_labor_radar_figure(solutions[income_group])
-#     make_income_and_labor_errors_table(solutions)
-#     make_control_income_differences_table(solutions)
-#     make_calibration_table(solutions)
-#     make_income_and_labor_lollipop_figure(solutions)
+calibration_modes = calibration_mode.mapping()
+for mode, preparation_callback in calibration_modes.items():
+    current_config = prepare_config(mode, main_timestamp)
+    solutions = {}
+    for income_group in income_groups:
+        solutions[income_group] = model.calibrate_and_save_or_load(
+            mode, income_group, current_config
+        )
+        solutions[income_group] = load_controls(solutions[income_group])
+        make_labor_radar_figure(solutions[income_group])
+    make_income_and_labor_errors_table(solutions)
+    make_control_income_differences_table(solutions)
+    make_calibration_table(solutions)
+    make_income_and_labor_lollipop_figure(solutions)

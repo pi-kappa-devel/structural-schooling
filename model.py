@@ -1376,21 +1376,24 @@ def load_calibration(filename):
     return calibration_results
 
 
-def calibrate_if_not_exists_and_save(calibration_mode, income_group, config_init):
+def calibrate_and_save_or_load(calibration_mode, income_group, config_init):
     """Calibrate the model and save the results."""
-    model_data = make_model_data(income_group, config_init)
+    filename = config.make_output_data_filename(config_init, income_group)
+    if not os.path.exists(filename):
+        message = f"Calibrating {calibration_mode} with {income_group.capitalize()} Income Data"
+    else:
+        message = f"Loading {calibration_mode} with {income_group.capitalize()} Income Data"
+    config_init["logger"].info(message)
 
-    model_data["config"]["logger"].info(
-        f"Calibrating {calibration_mode} with {income_group.capitalize()} Income Data"
-    )
-    model_data["config"]["logger"].info(json_model_data(model_data))
+    model_data = make_model_data(income_group, config_init)
 
     errors = make_calibration_objective(model_data)
     bounds = get_calibration_bounds(model_data)
     model_data["calibrator"]["results"] = {}
 
-    filename = config.make_output_data_filename(model_data["config"], income_group)
     if not os.path.exists(filename):
+        if model_data["config"]["verbose"]:
+            model_data["config"]["logger"].info(json_model_data(model_data))
         model_data["calibrator"]["results"] = scipy.optimize.minimize(
             lambda x: sum(errors(x)),
             [value[0] for value in model_data["calibrated"].values()],
@@ -1401,6 +1404,8 @@ def calibrate_if_not_exists_and_save(calibration_mode, income_group, config_init
         save_calibration_if_not_exists(filename, model_data["calibrator"]["results"])
     else:
         model_data["calibrator"]["results"] = load_calibration(filename)
+        for i, key in enumerate(model_data["calibrated"].keys()):
+            model_data["calibrated"][key][0] = model_data["calibrator"]["results"]["x"][i]
     model_data["optimizer"]["xstar"] = solve_foc(
         model_data, np.asarray(model_data["optimizer"]["x0"])
     ).tolist()

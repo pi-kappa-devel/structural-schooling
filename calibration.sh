@@ -38,7 +38,7 @@ declare -a setup_array=(
 # Prepare tasks to be executed
 declare -a tasks=()
 for setup in "${setup_array[@]}"; do
-    task="python calibration.py -m $setup -r ./out.$timestamp -l ./log.$timestamp"
+    task="python calibration.py -m $setup -o ./out.$timestamp -l ./log.$timestamp"
     message="echo 'Finished task $setup.'"
     tasks+=("$task && $message")
 done

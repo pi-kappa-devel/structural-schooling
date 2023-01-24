@@ -17,21 +17,20 @@ config_glob, modes = config.make_config_from_input()
 
 def calibrate(mode):
     """Calibrate the model for a given mode."""
-    config_init = config.prepare_mode_config(config_glob, mode)
+    config_init = config.prepare_config(config_glob, mode)
 
     output = {}
     for income_group, initializer in config_init["initializers"].items():
         if "no-income" in mode and "hat_c" in initializer:
             del initializer["hat_c"]
-        solved_model = model.calibrate_if_not_exists_and_save(
-            mode, income_group, config_init
-        )
+        solved_model = model.calibrate_and_save_or_load(mode, income_group, config_init)
         variables = list(solved_model["calibrated"].keys())
         output[income_group] = {
             "values": [
                 *solved_model["calibrator"]["results"]["x"],
                 *solved_model["optimizer"]["xstar"],
-                solved_model["optimizer"]["xstar"][1] / solved_model["optimizer"]["xstar"][2],
+                solved_model["optimizer"]["xstar"][1]
+                / solved_model["optimizer"]["xstar"][2],
                 solved_model["calibrator"]["results"]["fun"],
                 solved_model["calibrator"]["results"]["status"],
             ],
@@ -39,7 +38,10 @@ def calibrate(mode):
         }
         if "no-income" in mode:
             output[income_group]["values"] = [0, *output[income_group]["values"]]
-            output[income_group]["variables"] = ["hat_c", *output[income_group]["variables"]]
+            output[income_group]["variables"] = [
+                "hat_c",
+                *output[income_group]["variables"],
+            ]
 
     return output
 
