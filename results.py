@@ -12,11 +12,12 @@ import functools
 import json
 from math import pi
 import matplotlib.pyplot as plt
-import model
 import numpy as np
 
+import calibration
 import calibration_mode
 import config
+import model
 
 hlinestyle = ":"
 flinestyle = "-"
@@ -30,7 +31,7 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
-main_timestamp = "20230123082253"
+main_timestamp = "20230124175540"
 main_income_group = "all"
 main_calibration_mode = "abs-schooling-scl-wages"
 
@@ -1022,7 +1023,7 @@ def prepare_config(mode, timestamp):
 
 if __name__ == "__main__":
     main_config = prepare_config(main_calibration_mode, main_timestamp)
-    main_solution = model.calibrate_and_save_or_load(
+    main_solution = calibration.calibrate_and_save_or_load(
         main_calibration_mode, main_income_group, main_config
     )
     make_production_share_figure(main_solution)
@@ -1034,7 +1035,7 @@ if __name__ == "__main__":
         current_config = prepare_config(mode, main_timestamp)
         solutions[mode] = {}
         for income_group in income_groups:
-            solutions[mode][income_group] = model.calibrate_and_save_or_load(
+            solutions[mode][income_group] = calibration.calibrate_and_save_or_load(
                 mode, income_group, current_config
             )
             solutions[mode][income_group] = load_controls(solutions[mode][income_group])
