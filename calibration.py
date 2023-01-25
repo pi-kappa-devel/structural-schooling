@@ -19,8 +19,6 @@ import calibration_mode
 import config
 import model
 
-config_glob, modes = config.make_config_from_input()
-
 
 def make_calibration_objective(model_data):
     """Prepare calibration function."""
@@ -119,24 +117,26 @@ def calibrate_and_save_or_load(calibration_mode, income_group, config_init):
     return model_data
 
 
-def calibrate_all_income_groups(mode):
+def calibrate_all_income_groups(mode, config_inputs):
     """Calibrate the model for a given mode."""
-    config_init = config.prepare_mode_config(config_glob, mode)
+    config_init = config.prepare_mode_config(config_inputs, mode)
 
     solution = {}
     for income_group, initializer in config_init["initializers"].items():
         if "no-income" in mode and "hat_c" in initializer:
             del initializer["hat_c"]
-        solution[income_group] = model.calibrate_and_save_or_load(
+        solution[income_group] = calibrate_and_save_or_load(
             mode, income_group, config_init
         )
 
     return solution
 
 
-calibration_modes = calibration_mode.mapping()
-calibration_modes = {k: v for k, v in calibration_modes.items() if k in modes}
+if __name__ == "__main__":
+    config_inputs, modes = config.make_config_from_input()
+    calibration_modes = calibration_mode.mapping()
+    calibration_modes = {k: v for k, v in calibration_modes.items() if k in modes}
 
-solutions = {}
-for mode, preparation_callback in calibration_modes.items():
-    solutions[mode] = calibrate_all_income_groups(mode)
+    solutions = {}
+    for mode, preparation_callback in calibration_modes.items():
+        solutions[mode] = calibrate_all_income_groups(mode, config_inputs)

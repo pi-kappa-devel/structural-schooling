@@ -9,6 +9,7 @@ Income Comparisons?".
 
 import copy
 import functools
+import json
 from math import pi
 import matplotlib.pyplot as plt
 import model
@@ -959,7 +960,7 @@ def make_calibration_summary_table(solutions):
     table = ""
     for mode, solution in solutions.items():
         variables = [
-            *solution['all']["calibrated"].keys(),
+            *solution["all"]["calibrated"].keys(),
             "tw",
             "sf",
             "sm",
@@ -990,6 +991,24 @@ def make_calibration_summary_table(solutions):
     results_path = list(solutions.values())[0]["all"]["config"]["results_path"]
     with open(f"{results_path}/calibration-summary.org", "w") as f:
         f.write(table)
+
+
+def make_calibration_json_file(solutions):
+    """Export calibration results to JSON."""
+    results = {}
+    for mode, solution in solutions.items():
+        results[mode] = {}
+        for income_group, model_data in solution.items():
+            results[mode][income_group] = dict(
+                zip(
+                    list(model_data["calibrated"].keys()),
+                    model_data["calibrator"]["results"]["x"],
+                )
+            )
+
+    results_path = list(solutions.values())[0]["all"]["config"]["results_path"]
+    with open(f"{results_path}/calibration.json", "w") as fh:
+        fh.write(json.dumps(results, indent=2))
 
 
 def prepare_config(mode, timestamp):
@@ -1025,3 +1044,4 @@ if __name__ == "__main__":
         make_calibration_table(solutions[mode])
         make_income_and_labor_lollipop_figure(solutions[mode])
     make_calibration_summary_table(solutions)
+    make_calibration_json_file(solutions)
