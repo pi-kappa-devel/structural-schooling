@@ -969,7 +969,7 @@ def make_calibration_summary_table(solutions):
             "error",
             "status",
         ]
-        if "no-income" in mode:
+        if "no-subsistence" in mode:
             variables = ["hat_c", *variables]
 
         table = table + f"calibration_mode = {mode}\n"
@@ -983,7 +983,7 @@ def make_calibration_summary_table(solutions):
                 data["calibrator"]["results"]["fun"],
                 data["calibrator"]["results"]["status"],
             ]
-            if "no-income" in mode:
+            if "no-subsistence" in mode:
                 values = [0, *values]
             values = [masks[k].format(v) for k, v in enumerate(values)]
             table = table + f"| {group:6} | {' | '.join(values)} |\n"

@@ -32,17 +32,17 @@ def _prepare_abs_schooling(model_data):
     return _set_schooling_weight(model_data)
 
 
-def _prepare_abs_schooling_no_income(model_data):
+def _prepare_abs_schooling_no_subsistence(model_data):
     return _remove_income(model_data)
 
 
-def _prepare_abs_schooling_no_income_no_wages(model_data):
-    model_data = _prepare_abs_schooling_no_income(model_data)
+def _prepare_abs_schooling_no_subsistence_no_wages(model_data):
+    model_data = _prepare_abs_schooling_no_subsistence(model_data)
     return _remove_wages(model_data)
 
 
-def _prepare_abs_schooling_no_income_scl_wages(model_data):
-    model_data = _prepare_abs_schooling_no_income(model_data)
+def _prepare_abs_schooling_no_subsistence_scl_wages(model_data):
+    model_data = _prepare_abs_schooling_no_subsistence(model_data)
     return _set_wages_weight(model_data)
 
 
@@ -67,18 +67,18 @@ def _prepare_no_schooling(model_data):
     return model_data
 
 
-def _prepare_no_schooling_no_income(model_data):
+def _prepare_no_schooling_no_subsistence(model_data):
     model_data = _prepare_no_schooling(model_data)
     return _remove_income(model_data)
 
 
-def _prepare_no_schooling_no_income_no_wages(model_data):
-    model_data = _prepare_no_schooling_no_income(model_data)
+def _prepare_no_schooling_no_subsistence_no_wages(model_data):
+    model_data = _prepare_no_schooling_no_subsistence(model_data)
     return _remove_wages(model_data)
 
 
-def _prepare_no_schooling_no_income_scl_wages(model_data):
-    model_data = _prepare_no_schooling_no_income(model_data)
+def _prepare_no_schooling_no_subsistence_scl_wages(model_data):
+    model_data = _prepare_no_schooling_no_subsistence(model_data)
     return _set_wages_weight(model_data)
 
 
@@ -97,17 +97,17 @@ def _prepare_no_schooling_scl_wages_scl_income(model_data):
     return _set_income_weight(model_data)
 
 
-def _prepare_rel_schooling_no_income(model_data):
+def _prepare_rel_schooling_no_subsistence(model_data):
     return _remove_income(model_data)
 
 
-def _prepare_rel_schooling_no_income_no_wages(model_data):
-    model_data = _prepare_rel_schooling_no_income(model_data)
+def _prepare_rel_schooling_no_subsistence_no_wages(model_data):
+    model_data = _prepare_rel_schooling_no_subsistence(model_data)
     return _remove_wages(model_data)
 
 
-def _prepare_rel_schooling_no_income_scl_wages(model_data):
-    model_data = _prepare_rel_schooling_no_income(model_data)
+def _prepare_rel_schooling_no_subsistence_scl_wages(model_data):
+    model_data = _prepare_rel_schooling_no_subsistence(model_data)
     return _set_wages_weight(model_data)
 
 
@@ -128,23 +128,23 @@ def mapping():
     """Calibration mode to setup hook mapping."""
     return {
         "abs-schooling": _prepare_abs_schooling,
-        "abs-schooling-no-income": _prepare_abs_schooling_no_income,
-        "abs-schooling-no-income-no-wages": _prepare_abs_schooling_no_income_no_wages,
-        "abs-schooling-no-income-scl-wages": _prepare_abs_schooling_no_income_scl_wages,
+        "abs-schooling-no-subsistence": _prepare_abs_schooling_no_subsistence,
+        "abs-schooling-no-subsistence-no-wages": _prepare_abs_schooling_no_subsistence_no_wages,
+        "abs-schooling-no-subsistence-scl-wages": _prepare_abs_schooling_no_subsistence_scl_wages,
         "abs-schooling-no-wages": _prepare_abs_schooling_no_wages,
         "abs-schooling-scl-wages": _prepare_abs_schooling_scl_wages,
         "abs-schooling-scl-wages-scl-income": _prepare_abs_schooling_scl_wages_scl_income,
         "no-schooling": _prepare_no_schooling,
-        "no-schooling-no-income": _prepare_no_schooling_no_income,
-        "no-schooling-no-income-no-wages": _prepare_no_schooling_no_income_no_wages,
-        "no-schooling-no-income-scl-wages": _prepare_no_schooling_no_income_scl_wages,
+        "no-schooling-no-subsistence": _prepare_no_schooling_no_subsistence,
+        "no-schooling-no-subsistence-no-wages": _prepare_no_schooling_no_subsistence_no_wages,
+        "no-schooling-no-subsistence-scl-wages": _prepare_no_schooling_no_subsistence_scl_wages,
         "no-schooling-no-wages": _prepare_no_schooling_no_wages,
         "no-schooling-scl-wages": _prepare_no_schooling_scl_wages,
         "no-schooling-scl-wages-scl-income": _prepare_no_schooling_scl_wages_scl_income,
         "rel-schooling": None,
-        "rel-schooling-no-income": _prepare_rel_schooling_no_income,
-        "rel-schooling-no-income-no-wages": _prepare_rel_schooling_no_income_no_wages,
-        "rel-schooling-no-income-scl-wages": _prepare_rel_schooling_no_income_scl_wages,
+        "rel-schooling-no-subsistence": _prepare_rel_schooling_no_subsistence,
+        "rel-schooling-no-subsistence-no-wages": _prepare_rel_schooling_no_subsistence_no_wages,
+        "rel-schooling-no-subsistence-scl-wages": _prepare_rel_schooling_no_subsistence_scl_wages,
         "rel-schooling-no-wages": _prepare_rel_schooling_no_wages,
         "rel-schooling-scl-wages": _prepare_rel_schooling_scl_wages,
         "rel-schooling-scl-wages-scl-income": _prepare_rel_schooling_scl_wages_scl_income,

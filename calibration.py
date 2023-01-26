@@ -123,7 +123,7 @@ def calibrate_all_income_groups(mode, config_inputs):
 
     solution = {}
     for income_group, initializer in config_init["initializers"].items():
-        if "no-income" in mode and "hat_c" in initializer:
+        if "no-subsistence" in mode and "hat_c" in initializer:
             del initializer["hat_c"]
         solution[income_group] = calibrate_and_save_or_load(
             mode, income_group, config_init
