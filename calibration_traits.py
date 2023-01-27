@@ -108,7 +108,7 @@ def make_subsistence_share_target(data):
     return [target, prediction]
 
 
-def _remove_income(data):
+def _remove_subsistence(data):
     del data["calibrated"]["hat_c"]
     data["hooks"]["hat_c"] = lambda x: 0
     return data
@@ -119,7 +119,7 @@ def _remove_wages(data):
     return data
 
 
-def _set_income_weight(data):
+def _set_subsistence_weight(data):
     data["calibrator"]["weights"]["gamma"] = 100
     return data
 
@@ -140,7 +140,7 @@ def _prepare_abs_schooling(data):
 
 
 def _prepare_abs_schooling_no_subsistence(data):
-    return _remove_income(data)
+    return _remove_subsistence(data)
 
 
 def _prepare_abs_schooling_no_subsistence_no_wages(data):
@@ -163,9 +163,9 @@ def _prepare_abs_schooling_scl_wages(data):
     return _set_wages_weight(data)
 
 
-def _prepare_abs_schooling_scl_wages_scl_income(data):
+def _prepare_abs_schooling_scl_wages_scl_subsistence(data):
     data = _prepare_abs_schooling_scl_wages(data)
-    return _set_income_weight(data)
+    return _set_subsistence_weight(data)
 
 
 def _prepare_no_schooling(data):
@@ -176,7 +176,7 @@ def _prepare_no_schooling(data):
 
 def _prepare_no_schooling_no_subsistence(data):
     data = _prepare_no_schooling(data)
-    return _remove_income(data)
+    return _remove_subsistence(data)
 
 
 def _prepare_no_schooling_no_subsistence_no_wages(data):
@@ -199,13 +199,13 @@ def _prepare_no_schooling_scl_wages(data):
     return _set_wages_weight(data)
 
 
-def _prepare_no_schooling_scl_wages_scl_income(data):
+def _prepare_no_schooling_scl_wages_scl_subsistence(data):
     data = _prepare_no_schooling_scl_wages(data)
-    return _set_income_weight(data)
+    return _set_subsistence_weight(data)
 
 
 def _prepare_rel_schooling_no_subsistence(data):
-    return _remove_income(data)
+    return _remove_subsistence(data)
 
 
 def _prepare_rel_schooling_no_subsistence_no_wages(data):
@@ -226,9 +226,9 @@ def _prepare_rel_schooling_scl_wages(data):
     return _set_wages_weight(data)
 
 
-def _prepare_rel_schooling_scl_wages_scl_income(data):
+def _prepare_rel_schooling_scl_wages_scl_subsistence(data):
     data = _prepare_rel_schooling_scl_wages(data)
-    return _set_income_weight(data)
+    return _set_subsistence_weight(data)
 
 
 def setups():
@@ -240,19 +240,19 @@ def setups():
         "abs-schooling-no-subsistence-scl-wages": _prepare_abs_schooling_no_subsistence_scl_wages,
         "abs-schooling-no-wages": _prepare_abs_schooling_no_wages,
         "abs-schooling-scl-wages": _prepare_abs_schooling_scl_wages,
-        "abs-schooling-scl-wages-scl-income": _prepare_abs_schooling_scl_wages_scl_income,
+        "abs-schooling-scl-wages-scl-subsistence": _prepare_abs_schooling_scl_wages_scl_subsistence,
         "no-schooling": _prepare_no_schooling,
         "no-schooling-no-subsistence": _prepare_no_schooling_no_subsistence,
         "no-schooling-no-subsistence-no-wages": _prepare_no_schooling_no_subsistence_no_wages,
         "no-schooling-no-subsistence-scl-wages": _prepare_no_schooling_no_subsistence_scl_wages,
         "no-schooling-no-wages": _prepare_no_schooling_no_wages,
         "no-schooling-scl-wages": _prepare_no_schooling_scl_wages,
-        "no-schooling-scl-wages-scl-income": _prepare_no_schooling_scl_wages_scl_income,
+        "no-schooling-scl-wages-scl-subsistence": _prepare_no_schooling_scl_wages_scl_subsistence,
         "rel-schooling": None,
         "rel-schooling-no-subsistence": _prepare_rel_schooling_no_subsistence,
         "rel-schooling-no-subsistence-no-wages": _prepare_rel_schooling_no_subsistence_no_wages,
         "rel-schooling-no-subsistence-scl-wages": _prepare_rel_schooling_no_subsistence_scl_wages,
         "rel-schooling-no-wages": _prepare_rel_schooling_no_wages,
         "rel-schooling-scl-wages": _prepare_rel_schooling_scl_wages,
-        "rel-schooling-scl-wages-scl-income": _prepare_rel_schooling_scl_wages_scl_income,
+        "rel-schooling-scl-wages-scl-subsistence": _prepare_rel_schooling_scl_wages_scl_subsistence,
     }
