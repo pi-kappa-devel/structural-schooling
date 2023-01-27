@@ -137,8 +137,9 @@ def calibrate_and_save_or_load(config_init):
     verbose = config_init["verbose"]
     config_init["verbose"] = False
     model_data = model.make_model_data(config_init)
-    calib_data = make_calibration_data(model_data)
     config_init["verbose"] = verbose
+    calib_data = make_calibration_data(model_data)
+    calib_data = calibration_traits.setups()[setup](calib_data)
 
     if not os.path.exists(filename):
         if calib_data["model"]["config"]["verbose"]:

@@ -108,127 +108,127 @@ def make_subsistence_share_target(data):
     return [target, prediction]
 
 
-def _remove_income(model_data):
-    del model_data["calibrated"]["hat_c"]
-    model_data["hooks"]["hat_c"] = lambda x: 0
-    return model_data
+def _remove_income(data):
+    del data["calibrated"]["hat_c"]
+    data["hooks"]["hat_c"] = lambda x: 0
+    return data
 
 
-def _remove_wages(model_data):
-    del model_data["calibrator"]["targets"]["tw"]
-    return model_data
+def _remove_wages(data):
+    del data["calibrator"]["targets"]["tw"]
+    return data
 
 
-def _set_income_weight(model_data):
-    model_data["calibrator"]["weights"]["gamma"] = 100
-    return model_data
+def _set_income_weight(data):
+    data["calibrator"]["weights"]["gamma"] = 100
+    return data
 
 
-def _set_schooling_weight(model_data):
-    model_data["calibrator"]["weights"]["sf"] = 1
-    model_data["calibrator"]["weights"]["sm"] = 1
-    return model_data
+def _set_schooling_weight(data):
+    data["calibrator"]["weights"]["sf"] = 1
+    data["calibrator"]["weights"]["sm"] = 1
+    return data
 
 
-def _set_wages_weight(model_data):
-    model_data["calibrator"]["weights"]["tw"] = 100
-    return model_data
+def _set_wages_weight(data):
+    data["calibrator"]["weights"]["tw"] = 100
+    return data
 
 
-def _prepare_abs_schooling(model_data):
-    return _set_schooling_weight(model_data)
+def _prepare_abs_schooling(data):
+    return _set_schooling_weight(data)
 
 
-def _prepare_abs_schooling_no_subsistence(model_data):
-    return _remove_income(model_data)
+def _prepare_abs_schooling_no_subsistence(data):
+    return _remove_income(data)
 
 
-def _prepare_abs_schooling_no_subsistence_no_wages(model_data):
-    model_data = _prepare_abs_schooling_no_subsistence(model_data)
-    return _remove_wages(model_data)
+def _prepare_abs_schooling_no_subsistence_no_wages(data):
+    data = _prepare_abs_schooling_no_subsistence(data)
+    return _remove_wages(data)
 
 
-def _prepare_abs_schooling_no_subsistence_scl_wages(model_data):
-    model_data = _prepare_abs_schooling_no_subsistence(model_data)
-    return _set_wages_weight(model_data)
+def _prepare_abs_schooling_no_subsistence_scl_wages(data):
+    data = _prepare_abs_schooling_no_subsistence(data)
+    return _set_wages_weight(data)
 
 
-def _prepare_abs_schooling_no_wages(model_data):
-    model_data = _prepare_abs_schooling(model_data)
-    return _remove_wages(model_data)
+def _prepare_abs_schooling_no_wages(data):
+    data = _prepare_abs_schooling(data)
+    return _remove_wages(data)
 
 
-def _prepare_abs_schooling_scl_wages(model_data):
-    model_data = _prepare_abs_schooling(model_data)
-    return _set_wages_weight(model_data)
+def _prepare_abs_schooling_scl_wages(data):
+    data = _prepare_abs_schooling(data)
+    return _set_wages_weight(data)
 
 
-def _prepare_abs_schooling_scl_wages_scl_income(model_data):
-    model_data = _prepare_abs_schooling_scl_wages(model_data)
-    return _set_income_weight(model_data)
+def _prepare_abs_schooling_scl_wages_scl_income(data):
+    data = _prepare_abs_schooling_scl_wages(data)
+    return _set_income_weight(data)
 
 
-def _prepare_no_schooling(model_data):
-    del model_data["calibrator"]["targets"]["sf"]
-    del model_data["calibrator"]["targets"]["sm"]
-    return model_data
+def _prepare_no_schooling(data):
+    del data["calibrator"]["targets"]["sf"]
+    del data["calibrator"]["targets"]["sm"]
+    return data
 
 
-def _prepare_no_schooling_no_subsistence(model_data):
-    model_data = _prepare_no_schooling(model_data)
-    return _remove_income(model_data)
+def _prepare_no_schooling_no_subsistence(data):
+    data = _prepare_no_schooling(data)
+    return _remove_income(data)
 
 
-def _prepare_no_schooling_no_subsistence_no_wages(model_data):
-    model_data = _prepare_no_schooling_no_subsistence(model_data)
-    return _remove_wages(model_data)
+def _prepare_no_schooling_no_subsistence_no_wages(data):
+    data = _prepare_no_schooling_no_subsistence(data)
+    return _remove_wages(data)
 
 
-def _prepare_no_schooling_no_subsistence_scl_wages(model_data):
-    model_data = _prepare_no_schooling_no_subsistence(model_data)
-    return _set_wages_weight(model_data)
+def _prepare_no_schooling_no_subsistence_scl_wages(data):
+    data = _prepare_no_schooling_no_subsistence(data)
+    return _set_wages_weight(data)
 
 
-def _prepare_no_schooling_no_wages(model_data):
-    model_data = _prepare_no_schooling(model_data)
-    return _remove_wages(model_data)
+def _prepare_no_schooling_no_wages(data):
+    data = _prepare_no_schooling(data)
+    return _remove_wages(data)
 
 
-def _prepare_no_schooling_scl_wages(model_data):
-    model_data = _prepare_no_schooling(model_data)
-    return _set_wages_weight(model_data)
+def _prepare_no_schooling_scl_wages(data):
+    data = _prepare_no_schooling(data)
+    return _set_wages_weight(data)
 
 
-def _prepare_no_schooling_scl_wages_scl_income(model_data):
-    model_data = _prepare_no_schooling_scl_wages(model_data)
-    return _set_income_weight(model_data)
+def _prepare_no_schooling_scl_wages_scl_income(data):
+    data = _prepare_no_schooling_scl_wages(data)
+    return _set_income_weight(data)
 
 
-def _prepare_rel_schooling_no_subsistence(model_data):
-    return _remove_income(model_data)
+def _prepare_rel_schooling_no_subsistence(data):
+    return _remove_income(data)
 
 
-def _prepare_rel_schooling_no_subsistence_no_wages(model_data):
-    model_data = _prepare_rel_schooling_no_subsistence(model_data)
-    return _remove_wages(model_data)
+def _prepare_rel_schooling_no_subsistence_no_wages(data):
+    data = _prepare_rel_schooling_no_subsistence(data)
+    return _remove_wages(data)
 
 
-def _prepare_rel_schooling_no_subsistence_scl_wages(model_data):
-    model_data = _prepare_rel_schooling_no_subsistence(model_data)
-    return _set_wages_weight(model_data)
+def _prepare_rel_schooling_no_subsistence_scl_wages(data):
+    data = _prepare_rel_schooling_no_subsistence(data)
+    return _set_wages_weight(data)
 
 
-def _prepare_rel_schooling_no_wages(model_data):
-    return _remove_wages(model_data)
+def _prepare_rel_schooling_no_wages(data):
+    return _remove_wages(data)
 
 
-def _prepare_rel_schooling_scl_wages(model_data):
-    return _set_wages_weight(model_data)
+def _prepare_rel_schooling_scl_wages(data):
+    return _set_wages_weight(data)
 
 
-def _prepare_rel_schooling_scl_wages_scl_income(model_data):
-    model_data = _prepare_rel_schooling_scl_wages(model_data)
-    return _set_income_weight(model_data)
+def _prepare_rel_schooling_scl_wages_scl_income(data):
+    data = _prepare_rel_schooling_scl_wages(data)
+    return _set_income_weight(data)
 
 
 def setups():
