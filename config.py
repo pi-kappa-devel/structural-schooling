@@ -19,9 +19,9 @@ def preconfigure():
         "parameters": "parameters.json",
         "initializers": "initializers.json",
         "paths": {
-            "output": "../tmp/test/out.timestamp",
-            "results": "../tmp/test/res.timestamp",
-            "log": "../tmp/test/log.timestamp",
+            "output": "../tmp/out.timestamp",
+            "results": "../tmp/res.timestamp",
+            "log": "../tmp/log.timestamp",
         },
         "logger": None,
         "adaptive_optimizer_initialization": True,
@@ -43,7 +43,9 @@ def replace_path_timestamps(
     paths, timestamp=datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 ):
     """Replace timestamps in configuration paths."""
-    return {key: path.replace("timestamp", timestamp) for key, path in paths.items()}
+    return {
+        key: path.replace("timestamp", timestamp) for key, path in paths.items() if path
+    }
 
 
 def load_parameters(filename, group):
@@ -81,7 +83,7 @@ def setup_logger(config):
     filename = None
     setup = config["setup"]
     group = config["group"]
-    if config["paths"]["log"]:
+    if "log" in config["paths"]:
         filename = f"{config['paths']['log']}/{setup}-{group}.log"
         if not os.path.exists(filename):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
