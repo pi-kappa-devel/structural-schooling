@@ -1,4 +1,111 @@
-"""Calibration mode setup hooks."""
+"""Calibration traits file."""
+
+
+import model
+
+
+def make_time_allocation_target(data, gender, index):
+    """Make time allocation data and prediction target functions."""
+
+    def target():
+        return data["model"]["config"]["parameters"][f"L{gender}_{index}"]
+
+    if gender == "f":
+
+        def prediction(d, tw, sf, sm):
+            return model.make_female_time_allocation_control(d["model"], index)(
+                tw, sf, sm
+            )
+
+    else:
+
+        def prediction(d, tw, sf, sm):
+            return model.make_male_time_allocation_control(d["model"], index)(
+                tw, sf, sm
+            )
+
+    return [target, prediction]
+
+
+def make_within_gender_time_allocation_ratio_target(data, gender, over, under):
+    """Make time allocation ratios data and prediction target functions."""
+
+    def target():
+        return (
+            data["model"]["config"]["parameters"][f"L{gender}_{over}"]
+            / data["model"]["config"]["parameters"][f"L{gender}_{under}"]
+        )
+
+    if gender == "f":
+
+        def prediction(d, tw, sf, sm):
+            return model.make_female_time_allocation_control(d["model"], over)(
+                tw, sf, sm
+            ) / model.make_female_time_allocation_control(d["model"], under)(tw, sf, sm)
+
+    else:
+
+        def prediction(d, tw, sf, sm):
+            return model.make_male_time_allocation_control(d["model"], over)(
+                tw, sf, sm
+            ) / model.make_male_time_allocation_control(d["model"], under)(tw, sf, sm)
+
+    return [target, prediction]
+
+
+def make_schooling_target(data, gender):
+    """Make schooling data and prediction target functions."""
+
+    def target():
+        return (
+            data["model"]["config"]["parameters"][f"s{gender}"]
+            * data["calibrator"]["weights"][f"s{gender}"]
+        )
+
+    if gender == "f":
+
+        def prediction(d, tw, sf, sm):
+            return sf * data["calibrator"]["weights"]["sf"]
+
+    else:
+
+        def prediction(d, tw, sf, sm):
+            return sm * data["calibrator"]["weights"]["sm"]
+
+    return [target, prediction]
+
+
+def make_wage_ratio_target(data):
+    """Make schooling data and prediction target functions."""
+
+    def target():
+        return (
+            data["model"]["config"]["parameters"]["tw"]
+            * data["calibrator"]["weights"]["tw"]
+        )
+
+    def prediction(d, tw, sf, sm):
+        return tw * data["calibrator"]["weights"]["tw"]
+
+    return [target, prediction]
+
+
+def make_subsistence_share_target(data):
+    """Make subsistence share data and prediction target functions."""
+
+    def target():
+        return (
+            data["model"]["config"]["parameters"]["gamma"]
+            * data["calibrator"]["weights"]["gamma"]
+        )
+
+    def prediction(d, tw, sf, sm):
+        return (
+            model.make_subsistence_consumption_share(d["model"])(tw, sf, sm)
+            * data["calibrator"]["weights"]["tw"]
+        )
+
+    return [target, prediction]
 
 
 def _remove_income(model_data):
@@ -124,8 +231,8 @@ def _prepare_rel_schooling_scl_wages_scl_income(model_data):
     return _set_income_weight(model_data)
 
 
-def mapping():
-    """Calibration mode to setup hook mapping."""
+def setups():
+    """Calibration setup hook mapping."""
     return {
         "abs-schooling": _prepare_abs_schooling,
         "abs-schooling-no-subsistence": _prepare_abs_schooling_no_subsistence,

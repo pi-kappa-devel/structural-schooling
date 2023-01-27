@@ -1,54 +1,105 @@
-"""Calibration file.
+"""Calibration file."""
 
-Version of Model with two types of production technologies (traditional and modern),
-three sectors (agriculture, manufacturing, and services), genders , and schooling.
-Each household consist of a female and a male. Modern production occurs only after
-schooling. Firms choose effective labor units.
-
-@see "Why does the Schooling Gap Close while the Wage Gap Persists across Country
-Income Comparisons?".
-"""
-
+import copy
 import numpy as np
 import os
 import pickle
 import scipy
 import scipy.optimize
 
-import calibration_mode
 import config
+import calibration_traits
 import model
 
 
-def make_calibration_objective(model_data):
+def make_calibration_data(invariant_model):
+    """Prepare calibration data.
+
+    Model data are deeply copied to the resulting dictionary.
+    Args:
+        invariant_model (dict): Invariant model data.
+    """
+    model_data = copy.deepcopy(invariant_model)
+
+    weights = {
+        "sf": 1 / model_data["config"]["parameters"]["T"],
+        "sm": 1 / model_data["config"]["parameters"]["T"],
+        "tw": 1,
+        "gamma": 1,
+    }
+
+    data = {
+        "model": model_data,
+        "calibrator": {
+            "weights": weights,
+            "targets": None,
+            "method": "Nelder-Mead",
+            "maxiter": 10 ** 4,
+        },
+    }
+
+    targets = {
+        # relative female time allocation
+        "Lf_ArAh": calibration_traits.make_within_gender_time_allocation_ratio_target(
+            data, "f", "Ar", "Ah"
+        ),
+        "Lf_MrMh": calibration_traits.make_within_gender_time_allocation_ratio_target(
+            data, "f", "Mr", "Mh"
+        ),
+        "Lf_SrSh": calibration_traits.make_within_gender_time_allocation_ratio_target(
+            data, "f", "Sr", "Sh"
+        ),
+        "Lf_ArSr": calibration_traits.make_within_gender_time_allocation_ratio_target(
+            data, "f", "Ar", "Sr"
+        ),
+        "Lf_MrSr": calibration_traits.make_within_gender_time_allocation_ratio_target(
+            data, "f", "Mr", "Sr"
+        ),
+        # leisure allocation
+        "Lf_l": calibration_traits.make_time_allocation_target(data, "f", "l"),
+        # schooling years
+        "sf": calibration_traits.make_schooling_target(data, "f"),
+        "sm": calibration_traits.make_schooling_target(data, "m"),
+        # wage ratio
+        "tw": calibration_traits.make_wage_ratio_target(data),
+        # subsistence share
+        "gamma": calibration_traits.make_subsistence_share_target(data),
+    }
+
+    data["calibrator"]["targets"] = targets
+
+    return data
+
+
+def make_calibration_objective(data):
     """Prepare calibration function."""
     min_sae = 100
 
     def errors(y):
-        nonlocal model_data, min_sae
-        model_data = model.set_calibrated_data(
-            model_data, dict(zip(model_data["calibrated"].keys(), y))
+        nonlocal data, min_sae
+        data["model"] = model.set_free_parameters(
+            data["model"], dict(zip(data["model"]["free"].keys(), y))
         )
 
-        model_data["config"]["logger"].info(
+        data["model"]["config"]["logger"].info(
             "Numerically approximating model's solution:"
         )
-        y = model.solve_foc(model_data, np.asarray(model_data["optimizer"]["x0"]))
-        ae = [
-            np.abs(v[0]() - v[1](model_data, y[0], y[1], y[2]))
-            for _, v in model_data["calibrator"]["targets"].items()
-        ]
-        sae = sum(ae)
+        y = model.solve_foc(data["model"], np.asarray(data["model"]["optimizer"]["x0"]))
+        ae = {
+            k: np.abs(v[0]() - v[1](data, y[0], y[1], y[2]))
+            for k, v in data["calibrator"]["targets"].items()
+        }
+        sae = sum(ae.values())
         if sae < min_sae:
             min_sae = sae
-            if model_data["config"]["adaptive_optimizer_initialization"]:
-                model_data["optimizer"]["x0"] = y.tolist()
-        model_data["config"]["logger"].info(f"Calibration Errors = {ae}")
-        model_data["config"]["logger"].info(
+            if data["model"]["config"]["adaptive_optimizer_initialization"]:
+                data["model"]["optimizer"]["x0"] = y.tolist()
+        data["model"]["config"]["logger"].info(f"Calibration Errors = {ae}")
+        data["model"]["config"]["logger"].info(
             f"Calibration Sum of Absolute Errors = {sae}"
         )
 
-        return ae
+        return list(ae.values())
 
     return errors
 
@@ -72,71 +123,52 @@ def load_calibration(filename):
     return calibration_results
 
 
-def calibrate_and_save_or_load(calibration_mode, income_group, config_init):
+def calibrate_and_save_or_load(config_init):
     """Calibrate the model and save the results."""
-    filename = config.make_output_data_filename(config_init, income_group)
+    group = config_init["group"]
+    setup = config_init["setup"]
+    filename = config.make_output_data_filename(config_init)
     if not os.path.exists(filename):
-        message = f"Calibrating {calibration_mode} with {income_group.capitalize()} Income Data"
+        message = f"Calibrating {setup} with {group.capitalize()} Income Data"
     else:
-        message = (
-            f"Loading {calibration_mode} with {income_group.capitalize()} Income Data"
-        )
+        message = f"Loading {setup} with {group.capitalize()} Income Data"
     config_init["logger"].info(message)
 
     verbose = config_init["verbose"]
     config_init["verbose"] = False
-    model_data = model.make_model_data(income_group, config_init)
+    model_data = model.make_model_data(config_init)
+    calib_data = make_calibration_data(model_data)
     config_init["verbose"] = verbose
 
     if not os.path.exists(filename):
-        if model_data["config"]["verbose"]:
-            model_data["config"]["logger"].info(model.json_model_data(model_data))
-        errors = make_calibration_objective(model_data)
-        bounds = model.get_calibration_bounds(model_data)
-        model_data["calibrator"]["results"] = scipy.optimize.minimize(
+        if calib_data["model"]["config"]["verbose"]:
+            calib_data["model"]["config"]["logger"].info(model.json_calib_data(calib_data))
+        errors = make_calibration_objective(calib_data)
+        bounds = model.get_calibration_bounds(calib_data["model"])
+        calib_data["calibrator"]["results"] = scipy.optimize.minimize(
             lambda x: sum(errors(x)),
-            [value[0] for value in model_data["calibrated"].values()],
-            bounds=bounds if model_data["calibrator"]["method"] == "L-BFGS-B" else None,
-            method=model_data["calibrator"]["method"],
-            options={"disp": True, "maxiter": model_data["calibrator"]["maxiter"]},
+            [value[0] for value in calib_data["model"]["free"].values()],
+            bounds=bounds if calib_data["calibrator"]["method"] == "L-BFGS-B" else None,
+            method=calib_data["calibrator"]["method"],
+            options={"disp": True, "maxiter": calib_data["calibrator"]["maxiter"]},
         )
-        save_calibration_if_not_exists(filename, model_data["calibrator"]["results"])
+        save_calibration_if_not_exists(filename, calib_data["calibrator"]["results"])
     else:
-        model_data["calibrator"]["results"] = load_calibration(filename)
-        model.set_calibrated_data(
-            model_data,
+        calib_data["calibrator"]["results"] = load_calibration(filename)
+        model.set_free_parameters(
+            calib_data,
             {
-                key: model_data["calibrator"]["results"]["x"][i]
-                for i, key in enumerate(model_data["calibrated"].keys())
+                key: calib_data["calibrator"]["results"]["x"][i]
+                for i, key in enumerate(calib_data["free"].keys())
             },
         )
-    model_data["optimizer"]["xstar"] = model.solve_foc(
-        model_data, np.asarray(model_data["optimizer"]["x0"])
+    calib_data["model"]["optimizer"]["xstar"] = model.solve_foc(
+        calib_data["model"], np.asarray(calib_data["model"]["optimizer"]["x0"])
     ).tolist()
 
-    return model_data
-
-
-def calibrate_all_income_groups(mode, config_inputs):
-    """Calibrate the model for a given mode."""
-    config_init = config.prepare_mode_config(config_inputs, mode)
-
-    solution = {}
-    for income_group, initializer in config_init["initializers"].items():
-        if "no-subsistence" in mode and "hat_c" in initializer:
-            del initializer["hat_c"]
-        solution[income_group] = calibrate_and_save_or_load(
-            mode, income_group, config_init
-        )
-
-    return solution
+    return calib_data
 
 
 if __name__ == "__main__":
-    config_inputs, modes = config.make_config_from_input()
-    calibration_modes = calibration_mode.mapping()
-    calibration_modes = {k: v for k, v in calibration_modes.items() if k in modes}
-
-    solutions = {}
-    for mode, preparation_callback in calibration_modes.items():
-        solutions[mode] = calibrate_all_income_groups(mode, config_inputs)
+    config_inputs = config.make_config_from_input()
+    calibrate_and_save_or_load(config_inputs)

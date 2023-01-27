@@ -1,18 +1,19 @@
 """Model file.
 
-Version of Model with two types of production technologies (traditional and modern),
-three sectors (agriculture, manufacturing, and services), genders , and schooling.
-Each household consist of a female and a male. Modern production occurs only after
-schooling. Firms choose effective labor units.
-
-@see "Why does the Schooling Gap Close while the Wage Gap Persists across Country
-Income Comparisons?".
+This file contains the model functions and the model solver. The
+model has two types of production technologies (traditional and modern),
+three sectors (agriculture, manufacturing, and services), two genders (f and m),
+and schooling. Modern production occurs only after schooling. Firms choose
+effective labor units.
 """
 
+import copy
 import json
 import math as m
 import numpy as np
 import re
+
+import model_traits
 
 
 def make_discounter_fdf(model_data):
@@ -43,93 +44,42 @@ def make_human_capital_fdf(model_data):
     return {"h": H, "dh": lambda s: H(s) * zeta * np.power(s, -nu)}
 
 
-def set_calibrated_data(data, calibration_data):
-    """Set new calibration parameters.
+def set_free_parameters(data, free_parameters):
+    """Set new free parameters.
 
-    Used to set calibration parameters from either a list or a dictionary. The argument
-    `calibration_data` is expected to be a dictionary, the order of parameters does not matter.
+    Used to set free parameters from either a dictionary.
 
     Args:
         data (dict): Model data.
-        calibration_data (dict): New calibrated parameters to be used.
+        free_parameters (dict): New parameter values to be used.
     """
     # this also checks if all parameters are set
-    for k in data["calibrated"].keys():
-        data["calibrated"][k][0] = calibration_data[k]
+    for k in data["free"].keys():
+        data["free"][k][0] = free_parameters[k]
     if data["config"]["verbose"]:
-        data["config"]["logger"].info(f"Calibrated Values = {calibration_data}")
+        data["config"]["logger"].info(f"Free Parameter Values = {free_parameters}")
 
     return data
 
 
-def make_model_data(income_group, config_init):
+def make_model_data(invariant_config):
     """Prepare model data for an income group.
 
-    Expected to be used for constructing data for model calibrations.
-
+    The configuration dictionary is deeply copied to avoid side effects. The
+    configuration input should contain data for a specific calibration mode
+    and income group.
     Args:
-        income_group (str): Income group string, among "low", "middle", "high",
-            and "all".
         config_init (dict): Configuration dictionary.
     """
-    sectors = ["A", "M", "S"]
-    technologies = ["h", "r"]
-    income_groups = ["low", "middle", "high", "all"]
-
-    def make_labor_target(gender, index):
-        def data():
-            return config_init["parameters"][income_group][f"L{gender}_{index}"]
-
-        if gender == "f":
-
-            def prediction(d, tw, sf, sm):
-                return make_female_time_allocation_control(d, index)(tw, sf, sm)
-
-        else:
-
-            def prediction(d, tw, sf, sm):
-                return make_male_time_allocation_control(d, index)(tw, sf, sm)
-
-        return [data, prediction]
-
-    def make_within_gender_labor_ratio_target(gender, over, under):
-        def data():
-            return (
-                config_init["parameters"][income_group][f"L{gender}_{over}"]
-                / config_init["parameters"][income_group][f"L{gender}_{under}"]
-            )
-
-        if gender == "f":
-
-            def prediction(d, tw, sf, sm):
-                return make_female_time_allocation_control(d, over)(
-                    tw, sf, sm
-                ) / make_female_time_allocation_control(d, under)(tw, sf, sm)
-
-        else:
-
-            def prediction(d, tw, sf, sm):
-                return make_male_time_allocation_control(d, over)(
-                    tw, sf, sm
-                ) / make_male_time_allocation_control(d, under)(tw, sf, sm)
-
-        return [data, prediction]
-
-    weights = {
-        "sf": 1 / config_init["parameters"][income_group]["T"],
-        "sm": 1 / config_init["parameters"][income_group]["T"],
-        "tw": 1,
-        "gamma": 1,
-    }
+    config_init = copy.deepcopy(invariant_config)
 
     data = {
-        "income_group": income_group,
         "hooks": {"hat_c": None},
-        "calibrated": {
+        "free": {
             "hat_c": [None, (0, None)],  # adjusted subsistence term
             "varphi": [None, (1e-3, None)],  # leisure preference scale
             "beta_f": [None, (1e-3, None)],  # female's schooling cost
-            # relative productivities
+            # productivities-preferences parameters
             "Z_ArAh": [None, (1e-3, None)],
             "Z_MrMh": [None, (1e-3, None)],
             "Z_SrSh": [None, (1e-3, None)],
@@ -144,28 +94,17 @@ def make_model_data(income_group, config_init):
             "nu": 0.58,  # log human capital curvature
             "zeta": 0.32,  # log human capital scale
             "rho": 0.04,  # subjective discount factor
-            "tbeta": config_init["parameters"][income_group][
-                "tbeta"
-            ],  # modern services productivity
+            "tbeta": config_init["parameters"]["tbeta"],  # schooling costs ratio
             "Lf": 1.0,  # female's time endowment
             "Lm": 1.0,  # male's time endowment
-            "T": config_init["parameters"][income_group]["T"],  # life expectancy
+            "T": config_init["parameters"]["T"],  # life expectancy
             "Z_Sr": 1.0,  # modern services productivity
-        },
-        "sectors": sectors,
-        "technologies": technologies,
-        "income_groups": income_groups,
-        "calibrator": {
-            "weights": weights,
-            "targets": None,
-            "method": "Nelder-Mead",
-            "maxiter": 10 ** 4,
         },
         "optimizer": {
             "x0": [
-                config_init["parameters"][income_group]["tw"],
-                config_init["parameters"][income_group]["sf"],
-                config_init["parameters"][income_group]["sm"],
+                config_init["parameters"]["tw"],
+                config_init["parameters"]["sf"],
+                config_init["parameters"]["sm"],
             ],
             "step": 1e-10,
             "maxn": 35,
@@ -176,62 +115,19 @@ def make_model_data(income_group, config_init):
         },
     }
 
-    data["hooks"]["hat_c"] = lambda x: x["calibrated"]["hat_c"][0]
-
-    targets = {
-        # relative female labor allocation
-        "Lf_ArAh": make_within_gender_labor_ratio_target("f", "Ar", "Ah"),
-        "Lf_MrMh": make_within_gender_labor_ratio_target("f", "Mr", "Mh"),
-        "Lf_SrSh": make_within_gender_labor_ratio_target("f", "Sr", "Sh"),
-        "Lf_ArSr": make_within_gender_labor_ratio_target("f", "Ar", "Sr"),
-        "Lf_MrSr": make_within_gender_labor_ratio_target("f", "Mr", "Sr"),
-        # leisure allocation
-        "Lf_l": make_labor_target("f", "l"),
-        # schooling years
-        "sf": [
-            lambda: config_init["parameters"][income_group]["sf"]
-            * data["calibrator"]["weights"]["sf"],
-            lambda d, tw, sf, sm: sf * data["calibrator"]["weights"]["sf"],
-        ],
-        "sm": [
-            lambda: config_init["parameters"][income_group]["sm"]
-            * data["calibrator"]["weights"]["sm"],
-            lambda d, tw, sf, sm: sm * data["calibrator"]["weights"]["sm"],
-        ],
-        # wage ratio
-        "tw": [
-            lambda: config_init["parameters"][income_group]["tw"]
-            * data["calibrator"]["weights"]["tw"],
-            lambda d, tw, sf, sm: tw * data["calibrator"]["weights"]["tw"],
-        ],
-        # subsistence share
-        "gamma": [
-            lambda: config_init["parameters"][income_group]["gamma"]
-            * data["calibrator"]["weights"]["gamma"],
-            lambda d, tw, sf, sm: make_subsistence_consumption_share(d)(tw, sf, sm)
-            * data["calibrator"]["weights"]["gamma"],
-        ],
-    }
-
-    data["calibrator"]["targets"] = targets
+    data["hooks"]["hat_c"] = lambda x: x["free"]["hat_c"][0]
 
     def calculate_labor_share(index):
         d = make_discounter_fdf(data)["d"]
-        td = d(config_init["parameters"][income_group]["sf"]) / d(
-            config_init["parameters"][income_group]["sm"]
-        )
+        td = d(config_init["parameters"]["sf"]) / d(config_init["parameters"]["sm"])
         H = make_human_capital_fdf(data)["h"]
-        tH = H(config_init["parameters"][income_group]["sf"]) / H(
-            config_init["parameters"][income_group]["sm"]
-        )
+        tH = H(config_init["parameters"]["sf"]) / H(config_init["parameters"]["sm"])
         tL = (
-            config_init["parameters"][income_group][f"Lf_{index}"]
-            / config_init["parameters"][income_group][f"Lm_{index}"]
+            config_init["parameters"][f"Lf_{index}"]
+            / config_init["parameters"][f"Lm_{index}"]
         )
         eta = data["fixed"]["eta_l"] if index == "l" else data["fixed"]["eta"]
-        txi = (
-            config_init["parameters"][income_group]["tw"] * td * tH * (tL ** (1 / eta))
-        )
+        txi = config_init["parameters"]["tw"] * td * tH * (tL ** (1 / eta))
         return txi / (1 + txi)
 
     data["fixed"]["xi_Ah"] = calculate_labor_share(
@@ -254,18 +150,15 @@ def make_model_data(income_group, config_init):
     )  # female's share in modern services
     data["fixed"]["xi_l"] = calculate_labor_share("l")  # female's share in leisure
 
-    if config_init["preparation_callback"]:
-        data = (config_init["preparation_callback"])(data)
-
     data["config"] = config_init
 
-    if config_init["initializers"][income_group] is not None:
-        data = set_calibrated_data(data, config_init["initializers"][income_group])
+    if config_init["initializers"] is not None:
+        data = set_free_parameters(data, config_init["initializers"])
 
     return data
 
 
-def get_calibration_bounds(data):
+def get_calibration_bounds(model_data):
     """Get the calibration parameter bounds.
 
     Returns a list of tuples with lower and upper bounds for the calibrated variables.
@@ -274,31 +167,9 @@ def get_calibration_bounds(data):
         data (dict): Model data.
         keys (list): List of calibrated parameter names.
     """
-    bounds = [data["calibrated"][k][1] for k in data["calibrated"].keys()]
+    bounds = [model_data["free"][k][1] for k in model_data["free"].keys()]
 
     return bounds
-
-
-def update_model_data(data, income_group, calibration_init):
-    """Update model data for an income group.
-
-    Expected to be used for constructing model data structures for estimations not including
-    preference parameters. Overrides the income group and the calibration initializing values
-    of an existing (passed) data structure.
-
-    Args:
-        data (dict): Model data.
-        income_group (str): Income group string, among "low", "middle", "high",
-            and "all".
-        calibration_init (dict): Initial values for calibrated parameters for the updated model.
-    """
-    data["income_group"] = income_group
-
-    # this also checks if all parameters are initialized
-    for k in data["calibrated"].keys():
-        data["calibrated"][k][0] = calibration_init[k]
-
-    return data
 
 
 def json_model_data(model_data):
@@ -335,7 +206,7 @@ def make_female_lifetime_schooling_cost_fdf(model_data):
     See equation (C.1). The expression is part of the objective.
     """
     rho = model_data["fixed"]["rho"]
-    beta_f = model_data["calibrated"]["beta_f"][0]
+    beta_f = model_data["free"]["beta_f"][0]
 
     def dW(s):
         return -beta_f * np.exp(-rho * s)
@@ -349,7 +220,7 @@ def make_male_lifetime_schooling_cost_fdf(model_data):
     See equation (C.1). The expression is part of the objective.
     """
     rho = model_data["fixed"]["rho"]
-    beta_m = model_data["calibrated"]["beta_f"][0] / model_data["fixed"]["tbeta"]
+    beta_m = model_data["free"]["beta_f"][0] / model_data["fixed"]["tbeta"]
 
     def dW(s):
         return -beta_m * np.exp(-rho * s)
@@ -402,27 +273,27 @@ def make_male_wage_bill(model_data, index):
 
 
 def has_relative_productivity(model_data, over, under):
-    """Check if a relative productivity parameter is calibrated."""
-    keys = model_data["calibrated"].keys()
+    """Check if a relative productivity among the set parameters."""
+    keys = model_data["free"].keys()
     return 1 if f"Z_{over}{under}" in keys else -1 if f"Z_{under}{over}" in keys else 0
 
 
 def productivity_conjugate_right_indices(model_data, left):
-    """Find all calibrated relative productivities with left (sector) index."""
-    return {k[4:] for k in model_data["calibrated"].keys() if k.startswith(f"Z_{left}")}
+    """Find all set relative productivities with left (sector) index."""
+    return {k[4:] for k in model_data["free"].keys() if k.startswith(f"Z_{left}")}
 
 
 def productivity_conjugate_left_indices(model_data, right):
-    """Find all calibrated relative productivities with right (technology) index."""
+    """Find all set relative productivities with right (technology) index."""
     return {
         k[2:4]
-        for k in model_data["calibrated"].keys()
+        for k in model_data["free"].keys()
         if k.startswith("Z_") and k.endswith(right)
     }
 
 
 def productivity_conjugate_indices(model_data, index):
-    """Find calibrated relative productivities with left (sector) or right (technology) index."""
+    """Find set relative productivities with left (sector) or right (technology) index."""
     return productivity_conjugate_right_indices(
         model_data, index
     ) | productivity_conjugate_left_indices(model_data, index)
@@ -514,7 +385,7 @@ def make_relative_consumption_expenditure(model_data, over, under):
     sigma = model_data["fixed"]["sigma"]
     xi_ip = model_data["fixed"][f"xi_{over}"]
     xi_jq = model_data["fixed"][f"xi_{under}"]
-    Z_ipjq = model_data["calibrated"][f"Z_{over}{under}"][0]
+    Z_ipjq = model_data["free"][f"Z_{over}{under}"][0]
     I_ip = make_female_wage_bill(model_data, over)
     I_jq = make_female_wage_bill(model_data, under)
 
@@ -562,13 +433,13 @@ def make_sectoral_expenditure_share_of_consumption(model_data, sector):
             make_relative_consumption_expenditure(model_data, f"{s}r", f"{s}h")(
                 tw, sf, sm
             )
-            for s in model_data["sectors"]
+            for s in model_traits.sector_indices()
         ]
         Ejmihvs = [
             make_relative_consumption_expenditure(model_data, f"{sector}r", f"{s}h")(
                 tw, sf, sm
             )
-            for s in model_data["sectors"]
+            for s in model_traits.sector_indices()
         ]
         Ejmjhv = make_relative_consumption_expenditure(
             model_data, f"{sector}r", f"{sector}h"
@@ -577,7 +448,7 @@ def make_sectoral_expenditure_share_of_consumption(model_data, sector):
         return 1 / sum(
             [
                 A * (1 + Eimihvs[i]) / Ejmihvs[i]
-                for i in range(len(model_data["sectors"]))
+                for i in range(len(model_traits.sector_indices()))
             ]
         )
 
@@ -640,8 +511,8 @@ def make_aggregate_female_labor_ratio(model_data, index):
     def R(tw, sf, sm):
         Risjpsv = [
             make_female_labor_ratio(model_data, f"{s}{t}", index)(tw, sf, sm)
-            for s in model_data["sectors"]
-            for t in model_data["technologies"]
+            for s in model_traits.sector_indices()
+            for t in model_traits.technology_indices()
         ]
         return sum(Risjpsv)
 
@@ -697,7 +568,7 @@ def make_base_female_traditional_labor(model_data):
         ih = f"{sector}h"
         im = f"{sector}r"
 
-        varphi = model_data["calibrated"]["varphi"][0]
+        varphi = model_data["free"]["varphi"][0]
         hat_c = model_data["hooks"]["hat_c"](model_data)
         Lf = model_data["fixed"]["Lf"]
 
@@ -774,7 +645,7 @@ def make_relative_expenditure(model_data, over, under):
             model_data, under, over
         )(tw, sf, sm)
     if over == "l" and under.endswith("r"):
-        varphi = model_data["calibrated"]["varphi"][0]
+        varphi = model_data["free"]["varphi"][0]
         sector = under[0]
         other = under[0] + "h"
 
@@ -877,8 +748,8 @@ def make_aggregate_male_labor_ratio(model_data, index):
             make_male_flow_time_allocation_ratio(model_data, f"{s}{t}", index)(
                 tw, sf, sm
             )
-            for s in model_data["sectors"]
-            for t in model_data["technologies"]
+            for s in model_traits.sector_indices()
+            for t in model_traits.technology_indices()
         ]
         return sum(Risjpsv)
 
@@ -940,7 +811,7 @@ def make_female_modern_production_allocation(model_data):
         return sum(
             [
                 make_female_time_allocation_control(model_data, f"{s}r")(tw, sf, sm)
-                for s in model_data["sectors"]
+                for s in model_traits.sector_indices()
             ]
         )
 
@@ -957,7 +828,7 @@ def make_female_traditional_production_allocation(model_data):
         return sum(
             [
                 make_female_time_allocation_control(model_data, f"{s}h")(tw, sf, sm)
-                for s in model_data["sectors"]
+                for s in model_traits.sector_indices()
             ]
         )
 
@@ -974,8 +845,8 @@ def make_female_total_time_allocation(model_data):
         return sum(
             [
                 make_female_time_allocation_control(model_data, f"{s}{t}")(tw, sf, sm)
-                for s in model_data["sectors"]
-                for t in model_data["technologies"]
+                for s in model_traits.sector_indices()
+                for t in model_traits.technology_indices()
             ]
         ) + make_female_time_allocation_control(model_data, "l")(tw, sf, sm)
 
@@ -1003,7 +874,7 @@ def make_male_modern_production_allocation(model_data):
         return sum(
             [
                 make_male_time_allocation_control(model_data, f"{s}r")(tw, sf, sm)
-                for s in model_data["sectors"]
+                for s in model_traits.sector_indices()
             ]
         )
 
@@ -1020,7 +891,7 @@ def make_male_traditional_production_allocation(model_data):
         return sum(
             [
                 make_male_time_allocation_control(model_data, f"{s}h")(tw, sf, sm)
-                for s in model_data["sectors"]
+                for s in model_traits.sector_indices()
             ]
         )
 
@@ -1037,8 +908,8 @@ def make_male_total_time_allocation(model_data):
         return sum(
             [
                 make_male_time_allocation_control(model_data, f"{s}{t}")(tw, sf, sm)
-                for s in model_data["sectors"]
-                for t in model_data["technologies"]
+                for s in model_traits.sector_indices()
+                for t in model_traits.technology_indices()
             ]
         ) + make_male_time_allocation_control(model_data, "l")(tw, sf, sm)
 
@@ -1073,8 +944,8 @@ def make_reduced_constraints(model_data, index):
         SumEjqipv = sum(
             [
                 make_relative_expenditure(model_data, f"{s}{t}", index)(tw, sf, sm)
-                for s in model_data["sectors"]
-                for t in model_data["technologies"]
+                for s in model_traits.sector_indices()
+                for t in model_traits.technology_indices()
             ]
         )
         Iipv = make_female_wage_bill(model_data, index)(tw, sf, sm)
@@ -1235,9 +1106,9 @@ def make_jacobian(model_data):
             J = np.zeros((n, n)) * np.nan
 
             for i in range(0, n):
-                yl = y.copy()
+                yl = copy.deepcopy(y)
                 yl[i] = yl[i] - half_step
-                yr = y.copy()
+                yr = copy.deepcopy(y)
                 yr[i] = yr[i] + half_step
 
                 try:
@@ -1271,10 +1142,10 @@ def solve_foc(model_data, y):
     maxn = model_data["optimizer"]["maxn"]
     n = 0
     converged = False
-    yn = y.copy()
+    yn = copy.deepcopy(y)
     Fv = None
     while n <= maxn and not converged:
-        y = yn.copy()
+        y = copy.deepcopy(yn)
         Fv = F(y)
         Jv = J(y)
         iJv = np.linalg.inv(Jv)

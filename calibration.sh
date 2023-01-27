@@ -32,15 +32,22 @@ export procs=`expr $(nproc --all)`
 
 # Calibration setup array
 declare -a setup_array=(
-    `python -c 'import calibration_mode; print(*calibration_mode.mapping().keys())'`
+    `python -c 'import calibration_traits; print(*calibration_traits.setups().keys())'`
+)
+
+# Calibration income group
+declare -a group_array=(
+    `python -c 'import model_traits; print(*model_traits.income_groups())'`
 )
 
 # Prepare tasks to be executed
 declare -a tasks=()
 for setup in "${setup_array[@]}"; do
-    task="python calibration.py -m $setup -o ./out.$timestamp -l ./log.$timestamp"
-    message="echo 'Finished task $setup.'"
-    tasks+=("$task && $message")
+    for group in "${group_array[@]}"; do
+        task="python calibration.py -s $setup -g $group -o ./out.$timestamp -l ./log.$timestamp"
+        message="echo 'Finished task $setup-$group.'"
+        tasks+=("$task && $message")
+    done
 done
 
 # Execute tasks

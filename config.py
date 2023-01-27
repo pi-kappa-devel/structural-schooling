@@ -7,152 +7,82 @@ import logging
 import os
 import sys
 
-import calibration_mode
+import model_traits
+import calibration_traits
 
 
 def preconfigure():
     """Return default configuration placeholders."""
     return {
-        "mode": None,
-        "parameter_filename": "parameters.json",
-        "parameters": None,
-        "initializers_filename": "initializers.json",
-        "initializers": None,
-        "output_path": "../tmp/out.timestamp",
-        "results_path": "../tmp/res.timestamp",
-        "log_path": "../tmp/log.timestamp",
+        "setup": None,
+        "group": None,
+        "parameters": "parameters.json",
+        "initializers": "initializers.json",
+        "paths": {
+            "output": "../tmp/test/out.timestamp",
+            "results": "../tmp/test/res.timestamp",
+            "log": "../tmp/test/log.timestamp",
+        },
         "logger": None,
         "adaptive_optimizer_initialization": True,
         "verbose": True,
     }
 
 
-def setup_timestamps(
-    config, timestamp=datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+def make_output_data_filename(config):
+    """Make output data filename."""
+    output_path = config["paths"]["output"]
+    filename = (
+        f"{output_path}/{config['setup']}/{config['group']}-income-calibration.pkl"
+    )
+
+    return filename
+
+
+def replace_path_timestamps(
+    paths, timestamp=datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 ):
     """Replace timestamps in configuration paths."""
-    config["output_path"] = config["output_path"].replace("timestamp", timestamp)
-    config["results_path"] = config["results_path"].replace("timestamp", timestamp)
-    config["log_path"] = config["log_path"].replace("timestamp", timestamp)
-
-    return config
+    return {key: path.replace("timestamp", timestamp) for key, path in paths.items()}
 
 
-def make_config(
-    mode,
-    parameter_filename,
-    initializers_filename,
-    output_path,
-    results_path,
-    log_path,
-    adaptive_optimizer_initialization,
-    verbose,
-):
-    """Prepare configuration."""
-    config = {}
-    config["mode"] = mode
-    config["parameter_filename"] = parameter_filename
-    config["parameters"] = None
-    config["initializers_filename"] = initializers_filename
-    config["initializers"] = None
-    config["output_path"] = output_path
-    config["results_path"] = results_path
-    config["log_path"] = log_path
+def load_parameters(filename, group):
+    """Load parameters."""
+    parameters = {}
+    with open(filename) as f:
+        data = json.load(f)
+        if group in data:
+            parameters = data[group]
+        else:
+            parameters = data[group]
+    if parameters is None:
+        raise ValueError("Failed to load parameter data.")
 
-    config = setup_timestamps(config)
-
-    for path in [config["output_path"], config["results_path"], config["log_path"]]:
-        if not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
-    config["logger"] = None
-
-    config["adaptive_optimizer_initialization"] = adaptive_optimizer_initialization
-    config["verbose"] = verbose
-
-    return config
+    return parameters
 
 
-def make_config_from_input():
-    """Prepare configuration."""
-    usage_help = (
-        f"{sys.argv[0]} -m <calibration_modes> -i <initializers.json> -p <parameters.json>"
-        + " -o <output path> -r <results path> -l <log path>"
-        + " -a <adaptive_mode> -v <verbose_mode>"
-    )
+def load_initializers(filename, setup, group):
+    """Load initializing values."""
+    initializers = {}
+    with open("initializers.json") as f:
+        data = json.load(f)
+        if setup in data and group in data[setup]:
+            initializers = data[setup][group]
+        else:
+            initializers = data["default"][group]
+    if initializers is None:
+        raise ValueError("Failed to load initializing data.")
 
-    try:
-        opts, args = getopt.getopt(
-            sys.argv[1:],
-            "hm:i:p:o:r:l:a:v:",
-            [
-                "help",
-                "modes=",
-                "input=",
-                "parameters=",
-                "output=",
-                "results=",
-                "log=",
-                "adaptive=",
-                "verbose=",
-            ],
-        )
-    except getopt.GetoptError:
-        print("Error parsing input. Expected usage:\n", usage_help)
-        sys.exit(2)
-
-    modes = calibration_mode.mapping().keys()
-    preconfig = preconfigure()
-
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print(usage_help)
-            sys.exit()
-        elif opt in ("-m", "--modes"):
-            modes = [arg]
-        elif opt in ("-i", "--input"):
-            preconfig["initializers_filename"] = arg
-        elif opt in ("-p", "--parameters"):
-            preconfig["parameter_filename"] = arg
-        elif opt in ("-o", "--output"):
-            preconfig["output_path"] = arg
-        elif opt in ("-r", "--results"):
-            preconfig["results_path"] = arg
-        elif opt in ("-l", "--log"):
-            preconfig["log_path"] = arg
-        elif opt in ("-a", "--adaptive"):
-            preconfig["adaptive_optimizer_initialization"] = arg
-        elif opt in ("-v", "--verbose"):
-            preconfig["verbose"] = arg
-
-    if not modes:
-        print("No calibration mode specified. Expected usage:\n", usage_help)
-
-    return (
-        make_config(
-            None,
-            parameter_filename=preconfig["parameter_filename"],
-            initializers_filename=preconfig["initializers_filename"],
-            output_path=preconfig["output_path"],
-            results_path=preconfig["results_path"],
-            log_path=preconfig["log_path"],
-            adaptive_optimizer_initialization=preconfig[
-                "adaptive_optimizer_initialization"
-            ],
-            verbose=preconfig["verbose"],
-        ),
-        modes,
-    )
+    return initializers
 
 
-def setup_logger(config, mode):
+def setup_logger(config):
     """Initialize logger."""
-    calibration_modes = calibration_mode.mapping()
-    if mode not in calibration_modes:
-        raise ValueError(f"Calibration mode {mode} not found.")
-
     filename = None
-    if config["log_path"]:
-        filename = f"{config['log_path']}/{mode}.log"
+    setup = config["setup"]
+    group = config["group"]
+    if config["paths"]["log"]:
+        filename = f"{config['paths']['log']}/{setup}-{group}.log"
         if not os.path.exists(filename):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
     config["logger"] = logging.getLogger()
@@ -169,60 +99,120 @@ def setup_logger(config, mode):
     handler.setFormatter(formatter)
     config["logger"].handlers.clear()
     config["logger"].addHandler(handler)
-    config["logger"].info(f"Logging {mode} to {filename}")
+    config["logger"].info(f"Logging {setup} to {filename}")
 
     return config
 
 
-def load_parameters(config):
-    """Load parameters."""
-    parameters = {}
-    with open("parameters.json") as f:
-        parameters = json.load(f)
-    if parameters is None:
-        raise ValueError("Failed to load parameter data.")
+def make_config(
+    setup,
+    group,
+    parameter_filename,
+    initializers_filename,
+    output_path,
+    results_path,
+    log_path,
+    adaptive_optimizer_initialization,
+    verbose,
+):
+    """Create configuration."""
+    if setup not in calibration_traits.setups():
+        raise ValueError(f"Calibration setup {setup} not found.")
+    if group not in model_traits.income_groups():
+        raise ValueError(f"Income group {group} not found.")
 
-    config["parameters"] = parameters
-    return config
+    config = {}
+    config["setup"] = setup
+    config["group"] = group
+    config["parameters"] = load_parameters(parameter_filename, group)
+    config["initializers"] = load_initializers(initializers_filename, setup, group)
+    config["paths"] = replace_path_timestamps(
+        {"output": output_path, "results": results_path, "log": log_path}
+    )
 
+    for path in config["paths"].values():
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+    config = setup_logger(config)
 
-def load_initializers(config, mode):
-    """Load initializing values."""
-    calibration_modes = calibration_mode.mapping()
-    if mode not in calibration_modes:
-        raise ValueError(f"Calibration mode {mode} not found.")
-
-    initializers = {}
-    with open("initializers.json") as f:
-        data = json.load(f)
-        if mode in data:
-            initializers = data[mode]
-        else:
-            initializers = data["default"]
-    if initializers is None:
-        raise ValueError("Failed to load initializing data.")
-
-    config["initializers"] = initializers
-    return config
-
-
-def prepare_mode_config(config, mode):
-    """Prepare mode configuration."""
-    calibration_modes = calibration_mode.mapping()
-    if mode not in calibration_modes:
-        raise ValueError(f"Calibration mode {mode} not found.")
-    config["mode"] = mode
-    config["preparation_callback"] = calibration_modes[mode]
-
-    config = setup_logger(config, mode)
-    config = load_parameters(config)
-    config = load_initializers(config, mode)
+    config["adaptive_optimizer_initialization"] = adaptive_optimizer_initialization
+    config["verbose"] = verbose
 
     return config
 
 
-def make_output_data_filename(config, income_group):
-    """Make output data filename."""
-    filename = f"{config['output_path']}/{config['mode']}/{income_group}-income-calibration.pkl"
+def make_config_from_input():
+    """Create configuration from standard input."""
+    usage_help = (
+        f"{sys.argv[0]} -s <calibration_setup> -g <income_group>"
+        + " -i <initializers.json> -p <parameters.json>"
+        + " -o <output path> -r <results path> -l <log path>"
+        + " -a <adaptive_mode> -v <verbose>"
+    )
 
-    return filename
+    try:
+        opts, args = getopt.getopt(
+            sys.argv[1:],
+            "hs:g:i:p:o:r:l:a:v:",
+            [
+                "help",
+                "setup=",
+                "group=",
+                "input=",
+                "parameters=",
+                "output=",
+                "results=",
+                "log=",
+                "adaptive=",
+                "verbose=",
+            ],
+        )
+    except getopt.GetoptError:
+        print("Error parsing input. Expected usage:\n", usage_help)
+        sys.exit(2)
+
+    preconfig = preconfigure()
+
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            print(usage_help)
+            sys.exit()
+        elif opt in ("-s", "--setup"):
+            preconfig["setup"] = arg
+        elif opt in ("-g", "--group"):
+            preconfig["group"] = arg
+        elif opt in ("-i", "--input"):
+            preconfig["initializers"] = arg
+        elif opt in ("-p", "--parameters"):
+            preconfig["parameter"] = arg
+        elif opt in ("-o", "--output"):
+            preconfig["paths"]["output"] = arg
+        elif opt in ("-r", "--results"):
+            preconfig["paths"]["results"] = arg
+        elif opt in ("-l", "--log"):
+            preconfig["paths"]["log"] = arg
+        elif opt in ("-a", "--adaptive"):
+            preconfig["adaptive_optimizer_initialization"] = arg
+        elif opt in ("-v", "--verbose"):
+            preconfig["verbose"] = arg
+
+    if not preconfig["setup"]:
+        print("No calibration setup specified. Expected usage:\n", usage_help)
+        sys.exit(2)
+    if not preconfig["group"]:
+        print("No income group specified. Expected usage:\n", usage_help)
+        sys.exit(2)
+
+    return make_config(
+        setup=preconfig["setup"],
+        group=preconfig["group"],
+        parameter_filename=preconfig["parameters"],
+        initializers_filename=preconfig["initializers"],
+        output_path=preconfig["paths"]["output"],
+        results_path=preconfig["paths"]["results"],
+        log_path=preconfig["paths"]["log"],
+        adaptive_optimizer_initialization=preconfig[
+            "adaptive_optimizer_initialization"
+        ],
+        verbose=preconfig["verbose"],
+    )

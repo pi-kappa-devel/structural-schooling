@@ -714,7 +714,7 @@ def make_labor_radar_figure(invariant_solution):
     ax.plot(angles, values, linewidth=1, linestyle="solid", label="Model")
     ax.fill(angles, values, "b", alpha=0.1)
 
-    values = data_female_labor_shares[income_group].copy()
+    values = copy.deepcopy(data_female_labor_shares[income_group])
     values += values[:1]
     ax.plot(angles, values, linewidth=1, linestyle="solid", label="Data")
     ax.fill(angles, values, "r", alpha=0.1)
