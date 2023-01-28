@@ -16,12 +16,12 @@ def preconfigure():
     return {
         "setup": None,
         "group": None,
-        "parameters": "parameters.json",
-        "initializers": "initializers.json",
+        "parameters": "../data/parameters.json",
+        "initializers": "../data/initializers.json",
         "paths": {
-            "output": "../tmp/out.timestamp",
-            "results": "../tmp/res.timestamp",
-            "log": "../tmp/log.timestamp",
+            "output": "../out.timestamp",
+            "results": "../res.timestamp",
+            "log": "../log.timestamp",
         },
         "logger": None,
         "adaptive_optimizer_initialization": True,
