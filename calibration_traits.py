@@ -109,8 +109,8 @@ def make_subsistence_share_target(data):
 
 
 def _remove_subsistence(data):
-    del data["calibrated"]["hat_c"]
-    data["hooks"]["hat_c"] = lambda x: 0
+    del data["model"]["free"]["hat_c"]
+    data["model"]["hooks"]["hat_c"] = lambda x: 0
     return data
 
 
