@@ -31,7 +31,7 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
-main_timestamp = "20230124175540"
+main_timestamp = "20230127083133"
 main_income_group = "all"
 main_calibration_setup = "abs-schooling-scl-wages"
 

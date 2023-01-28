@@ -8,7 +8,6 @@ effective labor units.
 """
 
 import copy
-import json
 import math as m
 import numpy as np
 import re
@@ -170,21 +169,6 @@ def get_calibration_bounds(model_data):
     bounds = [model_data["free"][k][1] for k in model_data["free"].keys()]
 
     return bounds
-
-
-def json_model_data(model_data):
-    """Indented model data string."""
-    logger = model_data["config"]["logger"]
-    del model_data["config"]["logger"]
-
-    class encoder(json.JSONEncoder):
-        def default(self, o):
-            return o.__dict__
-
-    dump = json.dumps(model_data, indent=2, cls=encoder)
-    model_data["config"]["logger"] = logger
-
-    return dump
 
 
 def make_working_life(model_data):
@@ -1071,15 +1055,15 @@ def make_foc(model_data):
         Lm = make_male_total_time_allocation(model_data)(y[0], y[1], y[2])
         gamma = make_subsistence_consumption_share(model_data)(y[0], y[1], y[2])
         if np.abs(Lf - 1) > 1e-2:
-            model_data["logger"].warning(
+            model_data["config"]["logger"].warning(
                 f"Inaccurate total female time allocation, Lf = {Lf}"
             )
         if np.abs(Lm - 1) > 1e-2:
-            model_data["logger"].warning(
+            model_data["config"]["logger"].warning(
                 f"Inaccurate total male time allocation, Lm = {Lm}"
             )
         if gamma < 0 or gamma > 1:
-            model_data["logger"].warning(
+            model_data["config"]["logger"].warning(
                 f"Inaccurate subsistence share, gamma = {gamma}"
             )
 

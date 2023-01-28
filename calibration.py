@@ -1,6 +1,7 @@
 """Calibration file."""
 
 import copy
+import json
 import numpy as np
 import os
 import pickle
@@ -123,6 +124,21 @@ def load_calibration(filename):
     return calibration_results
 
 
+def json_calib_data(data):
+    """Export calibration data in JSON format."""
+    logger = data["model"]["config"]["logger"]
+    del data["model"]["config"]["logger"]
+
+    class encoder(json.JSONEncoder):
+        def default(self, o):
+            return o.__dict__
+
+    dump = json.dumps(data["model"], indent=2, cls=encoder)
+    data["model"]["config"]["logger"] = logger
+
+    return dump
+
+
 def calibrate_and_save_or_load(config_init):
     """Calibrate the model and save the results."""
     group = config_init["group"]
@@ -137,13 +153,13 @@ def calibrate_and_save_or_load(config_init):
     verbose = config_init["verbose"]
     config_init["verbose"] = False
     model_data = model.make_model_data(config_init)
-    config_init["verbose"] = verbose
+    model_data["config"]["verbose"] = verbose
     calib_data = make_calibration_data(model_data)
     calib_data = calibration_traits.setups()[setup](calib_data)
 
     if not os.path.exists(filename):
         if calib_data["model"]["config"]["verbose"]:
-            calib_data["model"]["config"]["logger"].info(model.json_calib_data(calib_data))
+            calib_data["model"]["config"]["logger"].info(json_calib_data(calib_data))
         errors = make_calibration_objective(calib_data)
         bounds = model.get_calibration_bounds(calib_data["model"])
         calib_data["calibrator"]["results"] = scipy.optimize.minimize(
