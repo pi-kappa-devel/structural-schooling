@@ -4,11 +4,18 @@ Gender Labor Biased Technological Change with Schooling
 The *structural-schooling* repository provides a collection of modular
 scripts used to calibrate an economic model of technological structural
 changes with households comprised of two individuals of distinct genders
-with endogenous schooling choices. The economic model is semi-analytically
+with endogenous schooling choices. The model is semi-analytically
 solvable and the optimization procedure for approximating its solutions
 is nested in the calibration procedure. 
 
 <img src='rsc/working-life-model.png' style="max-width:70%;margin:10px 15%;"/>
+
+The model is part of the work on gender schooling differences by
+[Karapanagiotis & Reimers (n.d.)](#ref-karapanagiotis2022). It combines the
+structural change elements of the model of 
+[Ngai & Petrongolo (2017)](#ref-ngai2017) with the educational choice 
+elements of [Restuccia & Vandenbroucke (2014)](#ref-restuccia2014).
+
 
 # Usage
 The [calibration.py](src/calibration.py) script can be called from the shell
@@ -54,7 +61,7 @@ possibility of side effects from the mathematical complications. The
 implemented functions follow the derived equations for the semi-analytic
 equilibrium solutions of the model. The implemented expressions can be
 found in the online
-appendix of [Karapanagiotis and Reimers (n.d.)](#ref-karapanagiotis2022).
+appendix of [Karapanagiotis & Reimers (n.d.)](#ref-karapanagiotis2022).
 
 # Dependencies
 
@@ -74,8 +81,8 @@ dictionary created by `calibration.make_calibration_data`.
 
 [Paul Reimers](https://www.wiwi.uni-frankfurt.de/profs/fuchs/reimers.php)
 
-Feel free to share and distribute. If you would like to contribute, send
-a pull request.
+Feel free to share and distribute. If you would like to contribute, please
+send a pull request.
 
 # License
 
@@ -91,6 +98,22 @@ Karapanagiotis, Pantelis, and Reimers, Paul. (n.d.). “Why does the Schooling
 Gap Close while the Wage Gap Persists across Country Income 
 Comparisons?” Working Paper.
 <https://doi.org/10.2139/ssrn.3525622>.
+
+</div>
+
+<div id="ref-ngai2017">
+
+Ngai, L. R., & Petrongolo, B. (2017, October). Gender gaps and the rise of
+the service economy. American Economic Journal: Macroeconomics, 9 (4), 1–44.
+<https://doi.org/10.1257/mac.20150253>.
+
+</div>
+
+<div id="ref-restuccia2014">
+
+Restuccia, D., & Vandenbroucke, G. (2014). Explaining educational attainment across
+countries and over time. Review of Economic Dynamics, 17 (4), 824–841.
+<https://doi.org/10.1016/j.red.2014.03.002>.
 
 </div>
 

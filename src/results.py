@@ -32,7 +32,7 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
-main_timestamp = "20230128190321"
+main_timestamp = "20230130044039"
 main_income_group = "all"
 main_calibration_setup = "abs-schooling-scl-wages"
 
@@ -1005,7 +1005,8 @@ def make_calibration_summary_table(solutions):
             table = table + f"| {group:6} | {' | '.join(values)} |\n"
 
     print(table)
-    results_path = list(solutions.values())[0]["all"]["config"]["paths"]["results"]
+    model_data = list(solutions.values())[0]["model"]
+    results_path = model_data["all"]["config"]["paths"]["results"]
     with open(f"{results_path}/calibration-summary.org", "w") as f:
         f.write(table)
 
