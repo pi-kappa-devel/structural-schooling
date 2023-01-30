@@ -17,6 +17,7 @@ import numpy as np
 import calibration
 import calibration_traits
 import config
+import model_traits
 import model
 
 hlinestyle = ":"
@@ -31,7 +32,7 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
-main_timestamp = "20230127083133"
+main_timestamp = "20230128190321"
 main_income_group = "all"
 main_calibration_setup = "abs-schooling-scl-wages"
 
@@ -63,15 +64,15 @@ data_subsistence_shares = {"low": 0.23, "middle": 0.06, "high": 0.02, "all": 0.1
 
 def update_data_from_productivity(data, initial_productivities, under, Z_under):
     """Update model data for a given  productivity factor."""
-    for sector in data["sectors"]:
-        for technology in data["technologies"]:
+    for sector in model_traits.sector_indices():
+        for technology in model_traits.technology_indices():
             if f"{sector}{technology}" != under:
-                data["calibrated"][f"Z_{sector}{technology}{under}"] = [
+                data["free"][f"Z_{sector}{technology}{under}"] = [
                     initial_productivities[f"Z_{sector}{technology}{under}"] / Z_under,
                     (1e-3, None),
                 ]
-                data["calibrated"][f"Z_{under}{sector}{technology}"] = [
-                    1 / data["calibrated"][f"Z_{sector}{technology}{under}"][0],
+                data["free"][f"Z_{under}{sector}{technology}"] = [
+                    1 / data["free"][f"Z_{sector}{technology}{under}"][0],
                     (1e-3, None),
                 ]
     return data
@@ -88,16 +89,16 @@ def make_relative_expenditure_of_production_share(
     data = copy.deepcopy(invariant_solution)
 
     def relative_expenditure_of_female(xif_under):
-        data["fixed"][f"xi_{production_share_index}"] = xif_under
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_under
         return model.make_relative_consumption_expenditure(
-            data, expenditure_over, expenditure_under
-        )(*data["optimizer"]["xstar"])
+            data["model"], expenditure_over, expenditure_under
+        )(*data["model"]["optimizer"]["xstar"])
 
     def relative_expenditure_of_male(xim_under):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_under
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_under
         return model.make_relative_consumption_expenditure(
-            data, expenditure_over, expenditure_under
-        )(*data["optimizer"]["xstar"])
+            data["model"], expenditure_over, expenditure_under
+        )(*data["model"]["optimizer"]["xstar"])
 
     return (
         relative_expenditure_of_female
@@ -117,15 +118,15 @@ def make_relative_expenditure_of_productivity(
     data = copy.deepcopy(invariant_solution)
 
     for k, v in initial_productivities.items():
-        data["calibrated"][k] = [v, (1e-3, None)]
+        data["model"]["free"][k] = [v, (1e-3, None)]
 
     def relative_expenditure(Z_ip):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_ip
+            data["model"], initial_productivities, productivity_index, Z_ip
         )
         return model.make_relative_consumption_expenditure(
             updated_data, expenditure_over, expenditure_under
-        )(*data["optimizer"]["xstar"])
+        )(*data["model"]["optimizer"]["xstar"])
 
     return relative_expenditure
 
@@ -140,16 +141,16 @@ def make_expenditure_share_of_production_share(
     data = copy.deepcopy(invariant_solution)
 
     def expenditure_share_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_sectoral_expenditure_share_of_consumption(
-            data, expenditure_sector
-        )(*data["optimizer"]["xstar"])
+            data["model"], expenditure_sector
+        )(*data["model"]["optimizer"]["xstar"])
 
     def expenditure_share_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_sectoral_expenditure_share_of_consumption(
-            data, expenditure_sector
-        )(*data["optimizer"]["xstar"])
+            data["model"], expenditure_sector
+        )(*data["model"]["optimizer"]["xstar"])
 
     return (
         expenditure_share_of_female
@@ -165,15 +166,15 @@ def make_expenditure_share_of_productivity(
     data = copy.deepcopy(invariant_solution)
 
     for k, v in initial_productivities.items():
-        data["calibrated"][k] = [v, (1e-3, None)]
+        data["model"]["free"][k] = [v, (1e-3, None)]
 
     def expenditure_share(Z_index):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_index
+            data["model"], initial_productivities, productivity_index, Z_index
         )
         return model.make_sectoral_expenditure_share_of_consumption(
             updated_data, expenditure_sector
-        )(*data["optimizer"]["xstar"])
+        )(*data["model"]["optimizer"]["xstar"])
 
     return expenditure_share
 
@@ -189,24 +190,28 @@ def make_wage_bill_of_production_share(
     data = copy.deepcopy(invariant_solution)
 
     def female_wage_bill_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
-        return model.make_female_wage_bill(data, bill_index)(
-            *data["optimizer"]["xstar"]
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return model.make_female_wage_bill(data["model"], bill_index)(
+            *data["model"]["optimizer"]["xstar"]
         )
 
     def female_wage_bill_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
-        return model.make_female_wage_bill(data, bill_index)(
-            *data["optimizer"]["xstar"]
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return model.make_female_wage_bill(data["model"], bill_index)(
+            *data["model"]["optimizer"]["xstar"]
         )
 
     def male_wage_bill_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
-        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["xstar"])
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return model.make_male_wage_bill(data["model"], bill_index)(
+            *data["model"]["optimizer"]["xstar"]
+        )
 
     def male_wage_bill_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
-        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["xstar"])
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return model.make_male_wage_bill(data["model"], bill_index)(
+            *data["model"]["optimizer"]["xstar"]
+        )
 
     if bill_gender == "f" and production_share_gender == "f":
         return female_wage_bill_of_female
@@ -228,12 +233,14 @@ def make_wage_bill_of_productivity(
     data = copy.deepcopy(invariant_solution)
 
     def female_wage_bill(_):
-        return model.make_female_wage_bill(data, bill_index)(
-            *data["optimizer"]["xstar"]
+        return model.make_female_wage_bill(data["model"], bill_index)(
+            *data["model"]["optimizer"]["xstar"]
         )
 
     def male_wage_bill(_):
-        return model.make_male_wage_bill(data, bill_index)(*data["optimizer"]["xstar"])
+        return model.make_male_wage_bill(data["model"], bill_index)(
+            *data["model"]["optimizer"]["xstar"]
+        )
 
     if bill_gender == "f":
         return female_wage_bill
@@ -252,28 +259,28 @@ def make_time_allocation_ratio_of_production_share(
     data = copy.deepcopy(invariant_solution)
 
     def female_flow_time_allocation_ratio_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_female_flow_time_allocation_ratio(
-            data, allocation_over, allocation_under
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_over, allocation_under
+        )(*data["model"]["optimizer"]["xstar"])
 
     def female_flow_time_allocation_ratio_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_female_flow_time_allocation_ratio(
-            data, allocation_over, allocation_under
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_over, allocation_under
+        )(*data["model"]["optimizer"]["xstar"])
 
     def male_flow_time_allocation_ratio_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
         return model.make_male_flow_time_allocation_ratio(
-            data, allocation_over, allocation_under
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_over, allocation_under
+        )(*data["model"]["optimizer"]["xstar"])
 
     def male_flow_time_allocation_ratio_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return model.make_male_flow_time_allocation_ratio(
-            data, allocation_over, allocation_under
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_over, allocation_under
+        )(*data["model"]["optimizer"]["xstar"])
 
     if allocation_gender == "f" and production_share_gender == "f":
         return female_flow_time_allocation_ratio_of_female
@@ -296,23 +303,23 @@ def make_time_allocation_ratio_of_productivity(
     data = copy.deepcopy(invariant_solution)
 
     for k, v in initial_productivities.items():
-        data["calibrated"][k] = [v, (1e-3, None)]
+        data["model"]["free"][k] = [v, (1e-3, None)]
 
     def female_flow_time_allocation_ratio(Z_ip):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_ip
+            data["model"], initial_productivities, productivity_index, Z_ip
         )
         return model.make_female_flow_time_allocation_ratio(
             updated_data, allocation_over, allocation_under
-        )(*data["optimizer"]["xstar"])
+        )(*data["model"]["optimizer"]["xstar"])
 
     def male_flow_time_allocation_ratio(Z_ip):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_ip
+            data["model"], initial_productivities, productivity_index, Z_ip
         )
         return model.make_male_flow_time_allocation_ratio(
             updated_data, allocation_over, allocation_under
-        )(*data["optimizer"]["xstar"])
+        )(*data["model"]["optimizer"]["xstar"])
 
     if allocation_gender == "f":
         return female_flow_time_allocation_ratio
@@ -330,28 +337,28 @@ def make_time_allocation_share_of_production_share(
     data = copy.deepcopy(invariant_solution)
 
     def female_time_allocation_share_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
         return 1 / model.make_aggregate_female_flow_time_allocation_ratio(
-            data, allocation_index
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_index
+        )(*data["model"]["optimizer"]["xstar"])
 
     def female_time_allocation_share_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return 1 / model.make_aggregate_female_flow_time_allocation_ratio(
-            data, allocation_index
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_index
+        )(*data["model"]["optimizer"]["xstar"])
 
     def male_time_allocation_share_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
         return 1 / model.make_aggregate_male_flow_time_allocation_ratio(
-            data, allocation_index
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_index
+        )(*data["model"]["optimizer"]["xstar"])
 
     def male_time_allocation_share_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
         return 1 / model.make_aggregate_male_flow_time_allocation_ratio(
-            data, allocation_index
-        )(*data["optimizer"]["xstar"])
+            data["model"], allocation_index
+        )(*data["model"]["optimizer"]["xstar"])
 
     if allocation_gender == "f" and production_share_gender == "f":
         return female_time_allocation_share_of_female
@@ -373,23 +380,23 @@ def make_time_allocation_share_of_productivity(
     data = copy.deepcopy(invariant_solution)
 
     for k, v in initial_productivities.items():
-        data["calibrated"][k] = [v, (1e-3, None)]
+        data["model"]["free"][k] = [v, (1e-3, None)]
 
     def female_time_allocation_share(Z_ip):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_ip
+            data["model"], initial_productivities, productivity_index, Z_ip
         )
         return 1 / model.make_aggregate_female_flow_time_allocation_ratio(
             updated_data, allocation_index
-        )(*data["optimizer"]["xstar"])
+        )(*data["model"]["optimizer"]["xstar"])
 
     def male_time_allocation_share(Z_ip):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_ip
+            data["model"], initial_productivities, productivity_index, Z_ip
         )
         return 1 / model.make_aggregate_male_flow_time_allocation_ratio(
             updated_data, allocation_index
-        )(*data["optimizer"]["xstar"])
+        )(*data["model"]["optimizer"]["xstar"])
 
     if allocation_gender == "f":
         return female_time_allocation_share
@@ -403,27 +410,27 @@ def make_modern_share_of_production_share(
     data = copy.deepcopy(invariant_solution)
 
     def female_modern_share_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
-        return model.make_female_modern_production_allocation(data)(
-            *data["optimizer"]["xstar"]
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return model.make_female_modern_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
         )
 
     def female_modern_share_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
-        return model.make_female_modern_production_allocation(data)(
-            *data["optimizer"]["xstar"]
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return model.make_female_modern_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
         )
 
     def male_modern_share_of_female(xif_ip):
-        data["fixed"][f"xi_{production_share_index}"] = xif_ip
-        return model.make_male_modern_production_allocation(data)(
-            *data["optimizer"]["xstar"]
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return model.make_male_modern_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
         )
 
     def male_modern_share_of_male(xim_ip):
-        data["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
-        return model.make_male_modern_production_allocation(data)(
-            *data["optimizer"]["xstar"]
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return model.make_male_modern_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
         )
 
     if modern_gender == "f" and production_share_gender == "f":
@@ -442,22 +449,22 @@ def make_modern_share_of_productivity(
     data = copy.deepcopy(invariant_solution)
 
     for k, v in initial_productivities.items():
-        data["calibrated"][k] = [v, (1e-3, None)]
+        data["model"]["free"][k] = [v, (1e-3, None)]
 
     def female_modern_share(Z_ip):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_ip
+            data["model"], initial_productivities, productivity_index, Z_ip
         )
         return model.make_female_modern_production_allocation(updated_data)(
-            *data["optimizer"]["xstar"]
+            *data["model"]["optimizer"]["xstar"]
         )
 
     def male_modern_share(Z_ip):
         updated_data = update_data_from_productivity(
-            data, initial_productivities, productivity_index, Z_ip
+            data["model"], initial_productivities, productivity_index, Z_ip
         )
         return model.make_male_modern_production_allocation(updated_data)(
-            *data["optimizer"]["xstar"]
+            *data["model"]["optimizer"]["xstar"]
         )
 
     if modern_gender == "f":
@@ -565,7 +572,8 @@ def make_production_share_figure(invariant_solution):
     )
 
     plt.tight_layout()
-    filename = f"{invariant_solution['config']['results_path']}/production-share.png"
+    results_path = invariant_solution["model"]["config"]["paths"]["results"]
+    filename = f"{results_path}/production-share.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -575,11 +583,13 @@ def make_productivity_figure(invariant_solution):
     data = copy.deepcopy(invariant_solution)
 
     initial_productivities = {
-        "Z_AhSr": data["calibrated"]["Z_ArSr"][0] / data["calibrated"]["Z_ArAh"][0],
-        "Z_MhSr": data["calibrated"]["Z_MrSr"][0] / data["calibrated"]["Z_MrMh"][0],
-        "Z_ShSr": 1 / data["calibrated"]["Z_SrSh"][0],
-        "Z_ArSr": data["calibrated"]["Z_ArSr"][0],
-        "Z_MrSr": data["calibrated"]["Z_MrSr"][0],
+        "Z_AhSr": data["model"]["free"]["Z_ArSr"][0]
+        / data["model"]["free"]["Z_ArAh"][0],
+        "Z_MhSr": data["model"]["free"]["Z_MrSr"][0]
+        / data["model"]["free"]["Z_MrMh"][0],
+        "Z_ShSr": 1 / data["model"]["free"]["Z_SrSh"][0],
+        "Z_ArSr": data["model"]["free"]["Z_ArSr"][0],
+        "Z_MrSr": data["model"]["free"]["Z_MrSr"][0],
     }
 
     technology_shares = {
@@ -610,13 +620,13 @@ def make_productivity_figure(invariant_solution):
     xlabel = "$Z_{Sr}$"
     xpoint = np.max(
         [
-            data["calibrated"][f"Z_{index}Sr"][0]
+            data["model"]["free"][f"Z_{index}Sr"][0]
             for index in [
                 f"{sector}{technology}"
-                for sector in data["sectors"]
-                for technology in data["technologies"]
+                for sector in model_traits.sector_indices()
+                for technology in model_traits.technology_indices()
             ]
-            if f"Z_{index}Sr" in data["calibrated"].keys()
+            if f"Z_{index}Sr" in data["model"]["free"].keys()
         ]
     )
     x = np.linspace(xpoint, 8.0 * xpoint, 50, endpoint=True)
@@ -674,7 +684,8 @@ def make_productivity_figure(invariant_solution):
     )
 
     plt.tight_layout()
-    filename = f"{invariant_solution['config']['results_path']}/productivity.png"
+    results_path = invariant_solution["model"]["config"]["paths"]["results"]
+    filename = f"{results_path}/productivity.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -683,18 +694,18 @@ def make_labor_radar_figure(invariant_solution):
     """Make a radar plot of the labor shares."""
     solution = copy.deepcopy(invariant_solution)
     controls = {}
-    for technology in solution["technologies"]:
-        for sector in solution["sectors"]:
+    for technology in model_traits.technology_indices():
+        for sector in model_traits.sector_indices():
             index = f"{sector}{technology}"
-            Lis = model.make_female_time_allocation_control(solution, index)(
-                *solution["optimizer"]["xstar"]
+            Lis = model.make_female_time_allocation_control(solution["model"], index)(
+                *solution["model"]["optimizer"]["xstar"]
             )
             controls[f"$L_{{{index}}}$"] = Lis
-    controls["$\\ell$"] = model.make_female_time_allocation_control(solution, "l")(
-        *solution["optimizer"]["xstar"]
-    )
+    controls["$\\ell$"] = model.make_female_time_allocation_control(
+        solution["model"], "l"
+    )(*solution["model"]["optimizer"]["xstar"])
 
-    income_group = solution["income_group"]
+    income_group = solution["model"]["config"]["group"]
     M = np.max(list(controls.values()) + data_female_labor_shares[income_group])
 
     plt.figure()
@@ -720,8 +731,10 @@ def make_labor_radar_figure(invariant_solution):
     ax.fill(angles, values, "r", alpha=0.1)
 
     plt.legend(loc="upper right", bbox_to_anchor=(0.1, 0.1)).get_frame().set_alpha(0.0)
-    results_path = solution["config"]["results_path"]
-    filename = f"{results_path}/radar-{solution['config']['setup']}-{solution['income_group']}.png"
+    results_path = solution["model"]["config"]["paths"]["results"]
+    setup = solution["model"]["config"]["setup"]
+    group = solution["model"]["config"]["group"]
+    filename = f"{results_path}/radar-{setup}-{group}.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -731,27 +744,29 @@ def load_controls(invariant_solution):
     solution = copy.deepcopy(invariant_solution)
 
     controls = {}
-    controls["$\\gamma$"] = model.make_subsistence_consumption_share(solution)(
-        *solution["optimizer"]["xstar"]
+    controls["$\\gamma$"] = model.make_subsistence_consumption_share(solution["model"])(
+        *solution["model"]["optimizer"]["xstar"]
     )
-    controls["$M^{f}$"] = model.make_female_modern_production_allocation(solution)(
-        *solution["optimizer"]["xstar"]
-    )
-    controls["$\\ell^{f}$"] = model.make_female_time_allocation_control(solution, "l")(
-        *solution["optimizer"]["xstar"]
-    )
-    controls["$M^{m}$"] = model.make_male_modern_production_allocation(solution)(
-        *solution["optimizer"]["xstar"]
-    )
-    controls["$\\ell^{m}$"] = model.make_male_time_allocation_control(solution, "l")(
-        *solution["optimizer"]["xstar"]
-    )
-    controls["$\\tilde w$"] = solution["optimizer"]["xstar"][0]
+    controls["$M^{f}$"] = model.make_female_modern_production_allocation(
+        solution["model"]
+    )(*solution["model"]["optimizer"]["xstar"])
+    controls["$\\ell^{f}$"] = model.make_female_time_allocation_control(
+        solution["model"], "l"
+    )(*solution["model"]["optimizer"]["xstar"])
+    controls["$M^{m}$"] = model.make_male_modern_production_allocation(
+        solution["model"]
+    )(*solution["model"]["optimizer"]["xstar"])
+    controls["$\\ell^{m}$"] = model.make_male_time_allocation_control(
+        solution["model"], "l"
+    )(*solution["model"]["optimizer"]["xstar"])
+    controls["$\\tilde w$"] = solution["model"]["optimizer"]["xstar"][0]
     controls["$\\tilde s$"] = (
-        solution["optimizer"]["xstar"][1] / solution["optimizer"]["xstar"][2]
+        solution["model"]["optimizer"]["xstar"][1]
+        / solution["model"]["optimizer"]["xstar"][2]
     )
     controls["$\\tilde M$"] = controls["$M^{f}$"] / controls["$M^{m}$"]
 
+    print(f"Controls = {controls}")
     solution["controls"] = controls
 
     return solution
@@ -816,8 +831,9 @@ def make_income_and_labor_lollipop_figure(solutions):
         )
     )
 
-    results_path = solutions["all"]["config"]["results_path"]
-    filename = f"{results_path}/lollipop-{solutions['all']['config']['setup']}.png"
+    results_path = solutions["all"]["model"]["config"]["paths"]["results"]
+    setup = solutions["all"]["model"]["config"]["setup"]
+    filename = f"{results_path}/lollipop-{setup}.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -830,7 +846,7 @@ def make_income_and_labor_errors_table(solutions):
         for group, solution in solutions.items()
     }
 
-    calibration_setup = solutions["all"]["config"]["setup"]
+    calibration_setup = solutions["all"]["model"]["config"]["setup"]
     output = f"calibration_setup = {calibration_setup}\n"
     names = list(controls["all"].keys())
     output = (
@@ -853,7 +869,7 @@ def make_income_and_labor_errors_table(solutions):
         output = output + f"| {income_group:10} | {' | '.join(values)} |\n"
 
     print(output)
-    results_path = solutions["all"]["config"]["results_path"]
+    results_path = solutions["all"]["model"]["config"]["paths"]["results"]
     with open(f"{results_path}/labor-errors-{calibration_setup}.org", "w") as f:
         f.write(output)
 
@@ -869,7 +885,7 @@ def make_control_income_differences_table(solutions):
     def prc(left, right):
         return "{:>7.2f}\\%".format(100 * (right - left) / left)
 
-    calibration_setup = solutions["all"]["config"]["setup"]
+    calibration_setup = solutions["all"]["model"]["config"]["setup"]
     output = (
         "\\\\ \\midrule\n\\multicolumn{6}{c}{\\textbf{\\Cref{calib:"
         + calibration_setup
@@ -907,7 +923,7 @@ def make_control_income_differences_table(solutions):
         output = output + "\n"
 
     print(output)
-    results_path = solutions["all"]["config"]["results_path"]
+    results_path = solutions["all"]["model"]["config"]["paths"]["results"]
     with open(
         f"{results_path}/prediction-differences-{calibration_setup}.tex", "w"
     ) as f:
@@ -916,8 +932,8 @@ def make_control_income_differences_table(solutions):
 
 def make_calibration_table(solutions):
     """Make a table of calibration results."""
-    calibration_setup = solutions["all"]["config"]["setup"]
-    initializers = {k: v[0] for k, v in solutions["all"]["calibrated"].items()}
+    calibration_setup = solutions["all"]["model"]["config"]["setup"]
+    initializers = {k: v[0] for k, v in solutions["all"]["model"]["free"].items()}
     output = (
         "\\\\ \\midrule\n\\multicolumn{"
         + str(len(initializers) + 4)
@@ -934,13 +950,14 @@ def make_calibration_table(solutions):
         mask = "{:>7.4f}"
         values = [
             *[
-                mask.format(solution["calibrated"][key][0])
+                mask.format(solution["model"]["free"][key][0])
                 for key in adjusted_initializers
             ],
             mask.format(
-                solution["calibrated"]["beta_f"][0] / solution["fixed"]["tbeta"]
+                solution["model"]["free"]["beta_f"][0]
+                / solution["model"]["fixed"]["tbeta"]
             ),
-            *[mask.format(x) for x in solution["optimizer"]["xstar"]],
+            *[mask.format(x) for x in solution["model"]["optimizer"]["xstar"]],
         ]
 
         output = output + f"\\textbf{{{income_group}}} & {' & '.join(values)}"
@@ -949,7 +966,7 @@ def make_calibration_table(solutions):
         output = output + "\n"
 
     print(output)
-    results_path = solutions["all"]["config"]["results_path"]
+    results_path = solutions["all"]["model"]["config"]["paths"]["results"]
     with open(f"{results_path}/calibration-{calibration_setup}.tex", "w") as f:
         f.write(output)
 
@@ -959,7 +976,7 @@ def make_calibration_summary_table(solutions):
     table = ""
     for setup, solution in solutions.items():
         variables = [
-            *solution["all"]["calibrated"].keys(),
+            *solution["all"]["model"]["free"].keys(),
             "tw",
             "sf",
             "sm",
@@ -976,8 +993,9 @@ def make_calibration_summary_table(solutions):
         for group, data in solution.items():
             values = [
                 *data["calibrator"]["results"]["x"],
-                *data["optimizer"]["xstar"],
-                data["optimizer"]["xstar"][1] / data["optimizer"]["xstar"][2],
+                *data["model"]["optimizer"]["xstar"],
+                data["model"]["optimizer"]["xstar"][1]
+                / data["model"]["optimizer"]["xstar"][2],
                 data["calibrator"]["results"]["fun"],
                 data["calibrator"]["results"]["status"],
             ]
@@ -987,7 +1005,7 @@ def make_calibration_summary_table(solutions):
             table = table + f"| {group:6} | {' | '.join(values)} |\n"
 
     print(table)
-    results_path = list(solutions.values())[0]["all"]["config"]["results_path"]
+    results_path = list(solutions.values())[0]["all"]["config"]["paths"]["results"]
     with open(f"{results_path}/calibration-summary.org", "w") as f:
         f.write(table)
 
@@ -1000,12 +1018,12 @@ def make_calibration_json_file(solutions):
         for income_group, model_data in solution.items():
             results[setup][income_group] = dict(
                 zip(
-                    list(model_data["calibrated"].keys()),
+                    list(model_data["model"]["free"].keys()),
                     model_data["calibrator"]["results"]["x"],
                 )
             )
 
-    results_path = list(solutions.values())[0]["all"]["config"]["results_path"]
+    results_path = list(solutions.values())[0]["all"]["config"]["paths"]["results"]
     with open(f"{results_path}/calibration.json", "w") as fh:
         fh.write(json.dumps(results, indent=2))
 
@@ -1048,7 +1066,7 @@ if __name__ == "__main__":
         for income_group in income_groups:
             current_config = prepare_config(setup, income_group, main_timestamp)
             solutions[setup][income_group] = calibration.calibrate_and_save_or_load(
-                setup, income_group, current_config
+                current_config
             )
             solutions[setup][income_group] = load_controls(
                 solutions[setup][income_group]

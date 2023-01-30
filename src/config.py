@@ -66,7 +66,7 @@ def load_parameters(filename, group):
 def load_initializers(filename, setup, group):
     """Load initializing values."""
     initializers = {}
-    with open("initializers.json") as f:
+    with open(filename) as f:
         data = json.load(f)
         if setup in data and group in data[setup]:
             initializers = data[setup][group]

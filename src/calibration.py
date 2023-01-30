@@ -172,11 +172,11 @@ def calibrate_and_save_or_load(config_init):
         save_calibration_if_not_exists(filename, calib_data["calibrator"]["results"])
     else:
         calib_data["calibrator"]["results"] = load_calibration(filename)
-        model.set_free_parameters(
-            calib_data,
+        calib_data["model"] = model.set_free_parameters(
+            calib_data["model"],
             {
                 key: calib_data["calibrator"]["results"]["x"][i]
-                for i, key in enumerate(calib_data["free"].keys())
+                for i, key in enumerate(calib_data["model"]["free"].keys())
             },
         )
     calib_data["model"]["optimizer"]["xstar"] = model.solve_foc(

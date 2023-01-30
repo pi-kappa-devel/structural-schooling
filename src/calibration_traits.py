@@ -102,7 +102,7 @@ def make_subsistence_share_target(data):
     def prediction(d, tw, sf, sm):
         return (
             model.make_subsistence_consumption_share(d["model"])(tw, sf, sm)
-            * data["calibrator"]["weights"]["tw"]
+            * data["calibrator"]["weights"]["gamma"]
         )
 
     return [target, prediction]
