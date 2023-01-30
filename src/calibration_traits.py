@@ -168,6 +168,33 @@ def _prepare_abs_schooling_scl_wages_scl_subsistence(data):
     return _set_subsistence_weight(data)
 
 
+def _prepare_benchmark_no_subsistence(data):
+    return _remove_subsistence(data)
+
+
+def _prepare_benchmark_no_subsistence_no_wages(data):
+    data = _prepare_benchmark_no_subsistence(data)
+    return _remove_wages(data)
+
+
+def _prepare_benchmark_no_subsistence_scl_wages(data):
+    data = _prepare_benchmark_no_subsistence(data)
+    return _set_wages_weight(data)
+
+
+def _prepare_benchmark_no_wages(data):
+    return _remove_wages(data)
+
+
+def _prepare_benchmark_scl_wages(data):
+    return _set_wages_weight(data)
+
+
+def _prepare_benchmark_scl_wages_scl_subsistence(data):
+    data = _prepare_benchmark_scl_wages(data)
+    return _set_subsistence_weight(data)
+
+
 def _prepare_no_schooling(data):
     del data["calibrator"]["targets"]["sf"]
     del data["calibrator"]["targets"]["sm"]
@@ -204,33 +231,6 @@ def _prepare_no_schooling_scl_wages_scl_subsistence(data):
     return _set_subsistence_weight(data)
 
 
-def _prepare_rel_schooling_no_subsistence(data):
-    return _remove_subsistence(data)
-
-
-def _prepare_rel_schooling_no_subsistence_no_wages(data):
-    data = _prepare_rel_schooling_no_subsistence(data)
-    return _remove_wages(data)
-
-
-def _prepare_rel_schooling_no_subsistence_scl_wages(data):
-    data = _prepare_rel_schooling_no_subsistence(data)
-    return _set_wages_weight(data)
-
-
-def _prepare_rel_schooling_no_wages(data):
-    return _remove_wages(data)
-
-
-def _prepare_rel_schooling_scl_wages(data):
-    return _set_wages_weight(data)
-
-
-def _prepare_rel_schooling_scl_wages_scl_subsistence(data):
-    data = _prepare_rel_schooling_scl_wages(data)
-    return _set_subsistence_weight(data)
-
-
 def setups():
     """Calibration setup hook mapping."""
     return {
@@ -241,6 +241,13 @@ def setups():
         "abs-schooling-no-wages": _prepare_abs_schooling_no_wages,
         "abs-schooling-scl-wages": _prepare_abs_schooling_scl_wages,
         "abs-schooling-scl-wages-scl-subsistence": _prepare_abs_schooling_scl_wages_scl_subsistence,
+        "benchmark": None,
+        "benchmark-no-subsistence": _prepare_benchmark_no_subsistence,
+        "benchmark-no-subsistence-no-wages": _prepare_benchmark_no_subsistence_no_wages,
+        "benchmark-no-subsistence-scl-wages": _prepare_benchmark_no_subsistence_scl_wages,
+        "benchmark-no-wages": _prepare_benchmark_no_wages,
+        "benchmark-scl-wages": _prepare_benchmark_scl_wages,
+        "benchmark-scl-wages-scl-subsistence": _prepare_benchmark_scl_wages_scl_subsistence,
         "no-schooling": _prepare_no_schooling,
         "no-schooling-no-subsistence": _prepare_no_schooling_no_subsistence,
         "no-schooling-no-subsistence-no-wages": _prepare_no_schooling_no_subsistence_no_wages,
@@ -248,11 +255,4 @@ def setups():
         "no-schooling-no-wages": _prepare_no_schooling_no_wages,
         "no-schooling-scl-wages": _prepare_no_schooling_scl_wages,
         "no-schooling-scl-wages-scl-subsistence": _prepare_no_schooling_scl_wages_scl_subsistence,
-        "rel-schooling": None,
-        "rel-schooling-no-subsistence": _prepare_rel_schooling_no_subsistence,
-        "rel-schooling-no-subsistence-no-wages": _prepare_rel_schooling_no_subsistence_no_wages,
-        "rel-schooling-no-subsistence-scl-wages": _prepare_rel_schooling_no_subsistence_scl_wages,
-        "rel-schooling-no-wages": _prepare_rel_schooling_no_wages,
-        "rel-schooling-scl-wages": _prepare_rel_schooling_scl_wages,
-        "rel-schooling-scl-wages-scl-subsistence": _prepare_rel_schooling_scl_wages_scl_subsistence,
     }

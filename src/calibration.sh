@@ -44,7 +44,8 @@ declare -a group_array=(
 declare -a tasks=()
 for setup in "${setup_array[@]}"; do
     for group in "${group_array[@]}"; do
-        task="python calibration.py -s $setup -g $group -o ./out.$timestamp -l ./log.$timestamp"
+        paths="-o ../out.$timestamp -l ../log.$timestamp -r ../res.$timestamp"
+        task="python calibration.py -s $setup -g $group $paths"
         message="echo 'Finished task $setup-$group.'"
         tasks+=("$task && $message")
     done
