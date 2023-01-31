@@ -163,7 +163,7 @@ def _prepare_abs_schooling_scl_wages(data):
     return _set_wages_weight(data)
 
 
-def _prepare_abs_schooling_scl_wages_scl_subsistence(data):
+def _prepare_abs_schooling_scl_subsistence_scl_wages(data):
     data = _prepare_abs_schooling_scl_wages(data)
     return _set_subsistence_weight(data)
 
@@ -199,7 +199,7 @@ def _prepare_no_schooling_scl_wages(data):
     return _set_wages_weight(data)
 
 
-def _prepare_no_schooling_scl_wages_scl_subsistence(data):
+def _prepare_no_schooling_scl_subsistence_scl_wages(data):
     data = _prepare_no_schooling_scl_wages(data)
     return _set_subsistence_weight(data)
 
@@ -226,7 +226,7 @@ def _prepare_rel_schooling_scl_wages(data):
     return _set_wages_weight(data)
 
 
-def _prepare_rel_schooling_scl_wages_scl_subsistence(data):
+def _prepare_rel_schooling_scl_subsistence_scl_wages(data):
     data = _prepare_rel_schooling_scl_wages(data)
     return _set_subsistence_weight(data)
 
@@ -239,20 +239,20 @@ def setups():
         "abs-schooling-no-subsistence-no-wages": _prepare_abs_schooling_no_subsistence_no_wages,
         "abs-schooling-no-subsistence-scl-wages": _prepare_abs_schooling_no_subsistence_scl_wages,
         "abs-schooling-no-wages": _prepare_abs_schooling_no_wages,
+        "abs-schooling-scl-subsistence-scl-wages": _prepare_abs_schooling_scl_subsistence_scl_wages,
         "abs-schooling-scl-wages": _prepare_abs_schooling_scl_wages,
-        "abs-schooling-scl-wages-scl-subsistence": _prepare_abs_schooling_scl_wages_scl_subsistence,
         "no-schooling": _prepare_no_schooling,
         "no-schooling-no-subsistence": _prepare_no_schooling_no_subsistence,
         "no-schooling-no-subsistence-no-wages": _prepare_no_schooling_no_subsistence_no_wages,
         "no-schooling-no-subsistence-scl-wages": _prepare_no_schooling_no_subsistence_scl_wages,
         "no-schooling-no-wages": _prepare_no_schooling_no_wages,
+        "no-schooling-scl-subsistence-scl-wages": _prepare_no_schooling_scl_subsistence_scl_wages,
         "no-schooling-scl-wages": _prepare_no_schooling_scl_wages,
-        "no-schooling-scl-wages-scl-subsistence": _prepare_no_schooling_scl_wages_scl_subsistence,
-        "rel-schooling": None,
+        "rel-schooling": lambda x: x,
         "rel-schooling-no-subsistence": _prepare_rel_schooling_no_subsistence,
         "rel-schooling-no-subsistence-no-wages": _prepare_rel_schooling_no_subsistence_no_wages,
         "rel-schooling-no-subsistence-scl-wages": _prepare_rel_schooling_no_subsistence_scl_wages,
         "rel-schooling-no-wages": _prepare_rel_schooling_no_wages,
+        "rel-schooling-scl-subsistence-scl-wages": _prepare_rel_schooling_scl_subsistence_scl_wages,
         "rel-schooling-scl-wages": _prepare_rel_schooling_scl_wages,
-        "rel-schooling-scl-wages-scl-subsistence": _prepare_rel_schooling_scl_wages_scl_subsistence,
     }
