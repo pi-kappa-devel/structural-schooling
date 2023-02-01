@@ -32,9 +32,9 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
-main_timestamp = "20230130155328"
+main_timestamp = "20230131054225"
 main_income_group = "all"
-main_calibration_setup = "abs-schooling-scl-wages"
+main_calibration_setup = "rel-schooling-scl-subsistence-scl-wages"
 
 # fmt: off
 income_groups = ["low", "middle", "high", "all"]
