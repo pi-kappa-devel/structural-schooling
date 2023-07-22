@@ -960,6 +960,7 @@ def make_female_schooling_condition(model_data, index):
         Iip = make_female_wage_bill(model_data, index)
         Mf = make_female_modern_production_allocation(model_data)
         dWf = make_female_lifetime_schooling_cost_fdf(model_data)["dW"]
+        xi = model_data["fixed"][f"xi_{index}"]
 
         return dWf(sf) + (
             Mf(tw, sf, sm)
@@ -995,7 +996,8 @@ def make_male_schooling_condition(model_data, index):
         Im_ip = make_male_wage_bill(model_data, index)
         Mm = make_male_modern_production_allocation(model_data)
         dWm = make_male_lifetime_schooling_cost_fdf(model_data)["dW"]
-
+        xi = model_data["fixed"][f"xi_{index}"]
+        
         return dWm(sm) + (
             Mm(tw, sf, sm)
             / Lmip(tw, sf, sm)

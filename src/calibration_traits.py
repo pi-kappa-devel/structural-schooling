@@ -203,6 +203,15 @@ def _prepare_no_schooling_scl_subsistence_scl_wages(data):
     data = _prepare_no_schooling_scl_wages(data)
     return _set_subsistence_weight(data)
 
+def _prepare_no_share_heterogeneity(data):
+    data["model"]["fixed"]["xi_Ah"] = 0.5
+    data["model"]["fixed"]["xi_Mh"] = 0.5
+    data["model"]["fixed"]["xi_Sh"] = 0.5
+    data["model"]["fixed"]["xi_Ar"] = 0.5
+    data["model"]["fixed"]["xi_Mr"] = 0.5
+    data["model"]["fixed"]["xi_Sr"] = 0.5
+    data["model"]["fixed"]["xi_l"] = 0.5
+    return data
 
 def _prepare_rel_schooling_no_subsistence(data):
     return _remove_subsistence(data)
@@ -248,6 +257,7 @@ def setups():
         "no-schooling-no-wages": _prepare_no_schooling_no_wages,
         "no-schooling-scl-subsistence-scl-wages": _prepare_no_schooling_scl_subsistence_scl_wages,
         "no-schooling-scl-wages": _prepare_no_schooling_scl_wages,
+        "no-share-heterogeneity": _prepare_no_share_heterogeneity,
         "rel-schooling": lambda x: x,
         "rel-schooling-no-subsistence": _prepare_rel_schooling_no_subsistence,
         "rel-schooling-no-subsistence-no-wages": _prepare_rel_schooling_no_subsistence_no_wages,

@@ -13,6 +13,7 @@ import json
 from math import pi
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import brentq, fminbound
 
 import calibration
 import calibration_traits
@@ -472,6 +473,200 @@ def make_modern_share_of_productivity(
     return male_modern_share
 
 
+def make_traditional_share_of_production_share(
+    invariant_solution, traditional_gender, production_share_gender, production_share_index
+):
+    """Make a function returning the traditional share for a given production share."""
+    data = copy.deepcopy(invariant_solution)
+
+    def female_traditional_share_of_female(xif_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return model.make_female_traditional_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
+        )
+
+    def female_traditional_share_of_male(xim_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return model.make_female_traditional_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
+        )
+
+    def male_traditional_share_of_female(xif_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return model.make_male_traditional_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
+        )
+
+    def male_traditional_share_of_male(xim_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return model.make_male_traditional_production_allocation(data["model"])(
+            *data["model"]["optimizer"]["xstar"]
+        )
+
+    if traditional_gender == "f" and production_share_gender == "f":
+        return female_traditional_share_of_female
+    elif traditional_gender == "f" and production_share_gender == "m":
+        return female_traditional_share_of_male
+    elif traditional_gender == "m" and production_share_gender == "f":
+        return male_traditional_share_of_female
+    return male_traditional_share_of_male
+
+
+def make_traditional_share_of_productivity(
+    invariant_solution, traditional_gender, productivity_index, initial_productivities
+):
+    """Make a function returning the traditional share for a given productivity factor."""
+    data = copy.deepcopy(invariant_solution)
+
+    for k, v in initial_productivities.items():
+        data["model"]["free"][k] = [v, (1e-3, None)]
+
+    def female_traditional_share(Z_ip):
+        updated_data = update_data_from_productivity(
+            data["model"], initial_productivities, productivity_index, Z_ip
+        )
+        return model.make_female_traditional_production_allocation(updated_data)(
+            *data["model"]["optimizer"]["xstar"]
+        )
+
+    def male_traditional_share(Z_ip):
+        updated_data = update_data_from_productivity(
+            data["model"], initial_productivities, productivity_index, Z_ip
+        )
+        return model.make_male_traditional_production_allocation(updated_data)(
+            *data["model"]["optimizer"]["xstar"]
+        )
+
+    if traditional_gender == "f":
+        return female_traditional_share
+    return male_traditional_share
+
+
+def make_schooling_of_production_share(
+    invariant_solution,
+    schooling_gender,
+    production_share_gender,
+    production_share_index,
+):
+    """Make a function returning the schooling years for a given production share."""
+    data = copy.deepcopy(invariant_solution)
+
+    def female_schooling_of_female(xif_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return fminbound(
+            lambda sf: np.abs(
+                model.make_female_schooling_condition(
+                    data["model"], production_share_index
+                )(
+                    data["model"]["optimizer"]["xstar"][0],
+                    sf,
+                    data["model"]["optimizer"]["xstar"][2],
+                )
+            ),
+            1e-3,
+            data["model"]["fixed"]["T"] - 1e-3,
+        )
+
+    def female_schooling_of_male(xim_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return fminbound(
+            lambda sf: np.abs(model.make_female_schooling_condition(
+                data["model"], production_share_index
+            )(
+                data["model"]["optimizer"]["xstar"][0],
+                sf,
+                data["model"]["optimizer"]["xstar"][2],
+            )),
+            1e-3,
+            data["model"]["fixed"]["T"] - 1e-3,
+        )
+
+    def male_schooling_of_female(xif_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
+        return fminbound(
+            lambda sm: np.abs(model.make_male_schooling_condition(
+                data["model"], production_share_index
+            )(
+                data["model"]["optimizer"]["xstar"][0],
+                data["model"]["optimizer"]["xstar"][1],
+                sm,
+            )),
+            1e-3,
+            data["model"]["fixed"]["T"] - 1e-3
+        )
+
+    def male_schooling_of_male(xim_ip):
+        data["model"]["fixed"][f"xi_{production_share_index}"] = 1 - xim_ip
+        return fminbound(
+            lambda sm: np.abs(model.make_male_schooling_condition(
+                data["model"], production_share_index
+            )(
+                data["model"]["optimizer"]["xstar"][0],
+                data["model"]["optimizer"]["xstar"][1],
+                sm,
+            )),
+            1e-3,
+            data["model"]["fixed"]["T"] - 1e-3,
+        )
+
+    if schooling_gender == "f" and production_share_gender == "f":
+        return female_schooling_of_female
+    elif schooling_gender == "f" and production_share_gender == "m":
+        return female_schooling_of_male
+    elif schooling_gender == "m" and production_share_gender == "f":
+        return male_schooling_of_female
+    return male_schooling_of_male
+
+
+def make_schooling_of_productivity(
+    invariant_solution,
+    schooling_gender,
+    productivity_index,
+    initial_productivities,
+):
+    """Make a function returning the schooling years for a given productivity factor."""
+    data = copy.deepcopy(invariant_solution)
+
+    for k, v in initial_productivities.items():
+        data["model"]["free"][k] = [v, (1e-3, None)]
+
+    def female_schooling(Z_ip):
+        updated_data = update_data_from_productivity(
+            data["model"], initial_productivities, productivity_index, Z_ip
+        )
+        return fminbound(
+            lambda sf: np.abs(
+                model.make_female_schooling_condition(updated_data, productivity_index)(
+                    updated_data["optimizer"]["xstar"][0],
+                    sf,
+                    updated_data["optimizer"]["xstar"][2],
+                )
+            ),
+            1e-3,
+            updated_data["fixed"]["T"] - 1e-3,
+        )
+
+    def male_schooling(Z_ip):
+        updated_data = update_data_from_productivity(
+            data["model"], initial_productivities, productivity_index, Z_ip
+        )
+        return fminbound(
+            lambda sm: np.abs(
+                model.make_male_schooling_condition(updated_data, productivity_index)(
+                    updated_data["optimizer"]["xstar"][0],
+                    updated_data["optimizer"]["xstar"][1],
+                    sm,
+                )
+            ),
+            1e-3,
+            updated_data["fixed"]["T"] - 1e-3,
+        )
+
+    if schooling_gender == "f":
+        return female_schooling
+    return male_schooling
+
+
 def make_subplot(x, female_fnc, male_fnc, line_label_mask, xlabel, ylabel):
     """Make a subplot from female and male functions."""
     plt.plot(
@@ -497,8 +692,12 @@ def make_production_share_figure(invariant_solution):
     """Create partial equilibrium production share figure."""
     data = copy.deepcopy(invariant_solution)
 
-    technology_shares = {
+    modern_technology_shares = {
         f"{gender}r": make_modern_share_of_production_share(data, gender, "f", "Sr")
+        for gender in ["f", "m"]
+    }
+    traditional_technology_shares = {
+        f"{gender}r": make_traditional_share_of_production_share(data, gender, "f", "Sr")
         for gender in ["f", "m"]
     }
     female_bill = make_wage_bill_of_production_share(data, "f", "Sr", "f", "Sr")
@@ -515,14 +714,17 @@ def make_production_share_figure(invariant_solution):
     male_allocation_share = make_time_allocation_share_of_production_share(
         data, "m", "Sr", "f", "Sr"
     )
+    female_schooling = make_schooling_of_production_share(data, "f", "f", "Sr")
+    male_schooling = make_schooling_of_production_share(data, "m", "f", "Sr")
 
-    x = np.linspace(0.15, 0.8, 50, endpoint=True)
+    
+    x = np.linspace(0.25, 0.75, 50, endpoint=True)
     xlabel = "$\\xi^{f}_{Sr}$"
     plt.figure()
 
-    plt.subplot(2, 2, 1)
+    plt.subplot(3, 2, 1)
     counter = -1
-    for key, fnc in technology_shares.items():
+    for key, fnc in modern_technology_shares.items():
         counter += 1
         gender = key[0]
         variable = "M" if key[1] == "r" else "H"
@@ -538,17 +740,16 @@ def make_production_share_figure(invariant_solution):
     plt.xlabel(xlabel)
     plt.ylabel("Paid Hours Share")
 
-    plt.subplot(2, 2, 2)
+    plt.subplot(3, 2, 2)
     make_subplot(
-        x, female_bill, male_bill, "$I^{{{g}}}_{{Sr}}$", xlabel, "Wage Bill Share"
+        x, female_schooling, male_schooling, "$s^{{{g}}}$", xlabel, "Schooling Years"
     )
-
-    plt.subplot(2, 2, 3)
+    plt.subplot(3, 2, 3)
     counter = -1
     for key, fnc in leisure_shares.items():
         counter += 1
         gender = key[0]
-        variable = "M" if key[1] == "r" else "H"
+        variable = "M"
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
@@ -561,7 +762,25 @@ def make_production_share_figure(invariant_solution):
     plt.xlabel(xlabel)
     plt.ylabel("Leisure Share")
 
-    plt.subplot(2, 2, 4)
+    plt.subplot(3, 2, 4)
+    counter = -1
+    for key, fnc in traditional_technology_shares.items():
+        counter += 1
+        gender = key[0]
+        variable = "H"
+        color = fcolors[0] if gender == "f" else mcolors[0]
+        plt.plot(
+            x,
+            [fnc(v) for v in x],
+            color=color,
+            linestyle=glinestyles[gender],
+            label=f"${variable}^{{{gender}}}$",
+        )
+    plt.legend().get_frame().set_alpha(0.0)
+    plt.xlabel(xlabel)
+    plt.ylabel("Traditional Hours Share")
+
+    plt.subplot(3, 2, 5)
     make_subplot(
         x,
         female_allocation_share,
@@ -569,6 +788,16 @@ def make_production_share_figure(invariant_solution):
         "$L^{{{g}}}_{{Sr}}/L^{{{g}}}$",
         xlabel,
         "Labor Share",
+    )
+
+    plt.subplot(3, 2, 6)
+    make_subplot(
+        x,
+        female_bill,
+        male_bill,
+        "$I^{{{g}}}_{{Sr}}$",
+        xlabel,
+        "Wage Bill",
     )
 
     plt.tight_layout()
@@ -592,8 +821,14 @@ def make_productivity_figure(invariant_solution):
         "Z_MrSr": data["model"]["free"]["Z_MrSr"][0],
     }
 
-    technology_shares = {
+    modern_technology_shares = {
         f"{gender}r": make_modern_share_of_productivity(
+            data, gender, "Sr", initial_productivities
+        )
+        for gender in ["f", "m"]
+    }
+    traditional_technology_shares = {
+        f"{gender}r": make_traditional_share_of_productivity(
             data, gender, "Sr", initial_productivities
         )
         for gender in ["f", "m"]
@@ -616,9 +851,16 @@ def make_productivity_figure(invariant_solution):
     male_allocation_share = make_time_allocation_share_of_productivity(
         data, "m", "Sr", "Sr", initial_productivities
     )
+    female_schooling = make_schooling_of_productivity(
+        data, "f", "Sr", initial_productivities
+    )
+    male_schooling = make_schooling_of_productivity(
+        data, "m", "Sr", initial_productivities
+    )
 
     xlabel = "$Z_{Sr}$"
-    xpoint = np.max(
+    xpoint = 1
+    np.max(
         [
             data["model"]["free"][f"Z_{index}Sr"][0]
             for index in [
@@ -629,15 +871,15 @@ def make_productivity_figure(invariant_solution):
             if f"Z_{index}Sr" in data["model"]["free"].keys()
         ]
     )
-    x = np.linspace(xpoint, 8.0 * xpoint, 50, endpoint=True)
+    x = np.linspace(0.8, 1.2, 20, endpoint=True)
     plt.figure()
 
-    plt.subplot(2, 2, 1)
+    plt.subplot(3, 2, 1)
     counter = -1
-    for key, fnc in technology_shares.items():
+    for key, fnc in modern_technology_shares.items():
         counter += 1
         gender = key[0]
-        variable = "M" if key[1] == "r" else "H"
+        variable = "M"
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
@@ -650,12 +892,17 @@ def make_productivity_figure(invariant_solution):
     plt.xlabel(xlabel)
     plt.ylabel("Paid Hours Share")
 
-    plt.subplot(2, 2, 2)
+    plt.subplot(3, 2, 2)
     make_subplot(
-        x, female_bill, male_bill, "$I^{{{g}}}_{{Sr}}$", xlabel, "Wage Bill Share"
+        x,
+        female_schooling,
+        male_schooling,
+        "$s^{{{g}}}$",
+        xlabel,
+        "Schooling Years",
     )
 
-    plt.subplot(2, 2, 3)
+    plt.subplot(3, 2, 3)
     counter = -1
     for key, fnc in leisure_shares.items():
         counter += 1
@@ -673,7 +920,25 @@ def make_productivity_figure(invariant_solution):
     plt.xlabel(xlabel)
     plt.ylabel("Leisure Share")
 
-    plt.subplot(2, 2, 4)
+    plt.subplot(3, 2, 4)
+    counter = -1
+    for key, fnc in traditional_technology_shares.items():
+        counter += 1
+        gender = key[0]
+        variable = "H"
+        color = fcolors[0] if gender == "f" else mcolors[0]
+        plt.plot(
+            x,
+            [fnc(v) for v in x],
+            color=color,
+            linestyle=glinestyles[gender],
+            label=f"${variable}^{{{gender}}}$",
+        )
+    plt.legend().get_frame().set_alpha(0.0)
+    plt.xlabel(xlabel)
+    plt.ylabel("Traditional Hours Share")
+    
+    plt.subplot(3, 2, 5)
     make_subplot(
         x,
         female_allocation_share,
@@ -683,6 +948,16 @@ def make_productivity_figure(invariant_solution):
         "Labor Share",
     )
 
+    plt.subplot(3, 2, 6)
+    make_subplot(
+        x,
+        female_bill,
+        male_bill,
+        "$I^{{{g}}}_{{Sr}}$",
+        xlabel,
+        "Wage Bill",
+    )
+    
     plt.tight_layout()
     results_path = invariant_solution["model"]["config"]["paths"]["results"]
     filename = f"{results_path}/productivity.png"
@@ -1024,7 +1299,9 @@ def make_calibration_json_file(solutions):
                 )
             )
 
-    results_path = list(solutions.values())[0]["all"]["model"]["config"]["paths"]["results"]
+    results_path = list(solutions.values())[0]["all"]["model"]["config"]["paths"][
+        "results"
+    ]
     with open(f"{results_path}/calibration.json", "w") as fh:
         fh.write(json.dumps(results, indent=2))
 
@@ -1037,6 +1314,7 @@ def prepare_config(setup, group, timestamp):
     preconfig["group"] = group
     preconfig["paths"] = config.replace_path_timestamps(preconfig["paths"], timestamp)
     preconfig["log_path"] = None
+    print(preconfig)
     return config.make_config(
         setup=setup,
         group=group,
@@ -1051,31 +1329,30 @@ def prepare_config(setup, group, timestamp):
         verbose=preconfig["verbose"],
     )
 
-
 if __name__ == "__main__":
     main_config = prepare_config(
         main_calibration_setup, main_income_group, main_timestamp
     )
     main_solution = calibration.calibrate_and_save_or_load(main_config)
-    make_production_share_figure(main_solution)
+    #make_production_share_figure(main_solution)
     make_productivity_figure(main_solution)
 
     calibration_setups = calibration_traits.setups()
     solutions = {}
-    for setup, preparation_callback in calibration_setups.items():
-        solutions[setup] = {}
-        for income_group in income_groups:
-            current_config = prepare_config(setup, income_group, main_timestamp)
-            solutions[setup][income_group] = calibration.calibrate_and_save_or_load(
-                current_config
-            )
-            solutions[setup][income_group] = load_controls(
-                solutions[setup][income_group]
-            )
-            make_labor_radar_figure(solutions[setup][income_group])
-        make_income_and_labor_errors_table(solutions[setup])
-        make_control_income_differences_table(solutions[setup])
-        make_calibration_table(solutions[setup])
-        make_income_and_labor_lollipop_figure(solutions[setup])
-    make_calibration_summary_table(solutions)
-    make_calibration_json_file(solutions)
+    # for setup, preparation_callback in calibration_setups.items():
+    #     solutions[setup] = {}
+    #     for income_group in income_groups:
+    #         current_config = prepare_config(setup, income_group, main_timestamp)
+    #         solutions[setup][income_group] = calibration.calibrate_and_save_or_load(
+    #             current_config
+    #         )
+    #         solutions[setup][income_group] = load_controls(
+    #             solutions[setup][income_group]
+    #         )
+    # make_labor_radar_figure(solutions[setup][income_group])
+    # make_income_and_labor_errors_table(solutions[setup])
+    # make_control_income_differences_table(solutions[setup])
+    # make_calibration_table(solutions[setup])
+    # make_income_and_labor_lollipop_figure(solutions[setup])
+    # make_calibration_summary_table(solutions)
+    # make_calibration_json_file(solutions)
