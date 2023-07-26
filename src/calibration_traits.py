@@ -159,6 +159,7 @@ def _prepare_abs_schooling_no_modern_service_share_heterogeneity(data):
     data = _prepare_abs_schooling(data)
     return _set_no_modern_service_share_heterogeneity(data)
 
+
 def _prepare_abs_schooling_no_subsistence(data):
     data = _prepare_abs_schooling(data)
     return _remove_subsistence(data)
@@ -192,6 +193,7 @@ def _prepare_abs_schooling_scl_subsistence_scl_wages(data):
 def _prepare_abs_schooling_with_low_income_shares(data):
     data = _prepare_abs_schooling(data)
     return _set_low_income_shares(data)
+
 
 def _prepare_no_schooling(data):
     del data["calibrator"]["targets"]["sf"]
@@ -237,6 +239,7 @@ def _prepare_no_schooling_scl_subsistence_scl_wages(data):
 def _prepare_no_schooling_with_low_income_shares(data):
     data = _prepare_no_schooling(data)
     return _set_low_income_shares(data)
+
 
 def _prepare_rel_schooling_no_modern_service_share_heterogeneity(data):
     return _set_no_modern_service_share_heterogeneity(data)

@@ -35,7 +35,7 @@ markevery = 5
 
 main_timestamp = "20230725203501"
 main_income_group = "all"
-main_calibration_setup = "rel-schooling-scl-subsistence-scl-wages"
+main_calibration_setup = "no-schooling"
 
 # fmt: off
 income_groups = ["low", "middle", "high", "all"]
@@ -61,6 +61,7 @@ data_male_labor_shares = {
 }
 data_subsistence_shares = {"low": 0.23, "middle": 0.06, "high": 0.02, "all": 0.1033}
 # fmt: on
+
 
 def update_data_from_productivity(data, productivity_index, scale):
     """Update model data for a given  productivity factor."""
@@ -102,12 +103,10 @@ def make_relative_expenditure_of_production_share(
 
 
 def make_relative_expenditure_of_productivity(
-    invariant_solution,
-    expenditure_over,
-    expenditure_under,
-    productivity_index
+    invariant_solution, expenditure_over, expenditure_under, productivity_index
 ):
     """Make a function returning relative expenditures for a given productivity factor."""
+
     def relative_expenditure(Z_scale):
         data = copy.deepcopy(invariant_solution)
         updated_data = update_data_from_productivity(
@@ -209,10 +208,7 @@ def make_wage_bill_of_production_share(
 
 
 def make_wage_bill_of_productivity(
-    invariant_solution,
-    bill_gender,
-    bill_index,
-    productivity_index
+    invariant_solution, bill_gender, bill_index, productivity_index
 ):
     """Make a function returning the wage bill ratio for a given productivity factor."""
     data = copy.deepcopy(invariant_solution)
@@ -281,7 +277,7 @@ def make_time_allocation_ratio_of_productivity(
     allocation_gender,
     allocation_over,
     allocation_under,
-    productivity_index
+    productivity_index,
 ):
     """Make a function returning the time allocation ratio for a given productivity factor."""
 
@@ -352,10 +348,7 @@ def make_time_allocation_share_of_production_share(
 
 
 def make_time_allocation_share_of_productivity(
-    invariant_solution,
-    allocation_gender,
-    allocation_index,
-    productivity_index
+    invariant_solution, allocation_gender, allocation_index, productivity_index
 ):
     """Make a function returning the time allocation share for a given productivity factor."""
 
@@ -495,7 +488,7 @@ def make_traditional_share_of_productivity(
     invariant_solution, traditional_gender, productivity_index
 ):
     """Make a function returning the traditional share for a given productivity factor."""
-    
+
     def female_traditional_share(Z_scale):
         data = copy.deepcopy(invariant_solution)
         updated_data = update_data_from_productivity(
@@ -527,6 +520,13 @@ def make_schooling_of_production_share(
 ):
     """Make a function returning the schooling years for a given production share."""
     data = copy.deepcopy(invariant_solution)
+    xtol = 1e-4
+    female_eq_cond = model.make_female_schooling_condition(
+        data["model"], production_share_index
+    )(*data["model"]["optimizer"]["xstar"])
+    male_eq_cond = model.make_male_schooling_condition(
+        data["model"], production_share_index
+    )(*data["model"]["optimizer"]["xstar"])
 
     def female_schooling_of_female(xif_ip):
         data["model"]["fixed"][f"xi_{production_share_index}"] = xif_ip
@@ -539,9 +539,11 @@ def make_schooling_of_production_share(
                     sf,
                     data["model"]["optimizer"]["xstar"][2],
                 )
+                - female_eq_cond
             ),
             1e-3,
             data["model"]["fixed"]["T"] - 1e-3,
+            xtol=xtol,
         )
 
     def female_schooling_of_male(xim_ip):
@@ -555,9 +557,11 @@ def make_schooling_of_production_share(
                     sf,
                     data["model"]["optimizer"]["xstar"][2],
                 )
+                - female_eq_cond
             ),
             1e-3,
             data["model"]["fixed"]["T"] - 1e-3,
+            xtol=xtol,
         )
 
     def male_schooling_of_female(xif_ip):
@@ -571,9 +575,11 @@ def make_schooling_of_production_share(
                     data["model"]["optimizer"]["xstar"][1],
                     sm,
                 )
+                - male_eq_cond
             ),
             1e-3,
             data["model"]["fixed"]["T"] - 1e-3,
+            xtol=xtol,
         )
 
     def male_schooling_of_male(xim_ip):
@@ -587,9 +593,11 @@ def make_schooling_of_production_share(
                     data["model"]["optimizer"]["xstar"][1],
                     sm,
                 )
+                - male_eq_cond
             ),
             1e-3,
             data["model"]["fixed"]["T"] - 1e-3,
+            xtol=xtol,
         )
 
     if schooling_gender == "f" and production_share_gender == "f":
@@ -602,11 +610,16 @@ def make_schooling_of_production_share(
 
 
 def make_schooling_of_productivity(
-    invariant_solution,
-    schooling_gender,
-    productivity_index
+    invariant_solution, schooling_gender, productivity_index
 ):
     """Make a function returning the schooling years for a given productivity factor."""
+    xtol = 1e-4
+    female_eq_cond = model.make_female_schooling_condition(
+        invariant_solution["model"], productivity_index
+    )(*invariant_solution["model"]["optimizer"]["xstar"])
+    male_eq_cond = model.make_male_schooling_condition(
+        invariant_solution["model"], productivity_index
+    )(*invariant_solution["model"]["optimizer"]["xstar"])
 
     def female_schooling(Z_scale):
         data = copy.deepcopy(invariant_solution)
@@ -620,9 +633,11 @@ def make_schooling_of_productivity(
                     sf,
                     updated_data["optimizer"]["xstar"][2],
                 )
+                - female_eq_cond
             ),
             1e-3,
-            updated_data["fixed"]["T"] - 1e-3
+            updated_data["fixed"]["T"] - 1e-3,
+            xtol=xtol,
         )
 
     def male_schooling(Z_scale):
@@ -637,9 +652,11 @@ def make_schooling_of_productivity(
                     updated_data["optimizer"]["xstar"][1],
                     sm,
                 )
+                - male_eq_cond
             ),
             1e-3,
-            updated_data["fixed"]["T"] - 1e-3
+            updated_data["fixed"]["T"] - 1e-3,
+            xtol=xtol,
         )
 
     if schooling_gender == "f":
@@ -817,8 +834,7 @@ def make_productivity_figure(invariant_solution):
     female_schooling = make_schooling_of_productivity(data, "f", "Sr")
     male_schooling = make_schooling_of_productivity(data, "m", "Sr")
 
-    xlabel = "$Z_{Sr}$"
-    xpoint = 1
+    xlabel = "$1 + \\Delta Z_{Sr}/Z_{Sr}$"
     x = np.linspace(0.5, 1.5, 20, endpoint=True)
     plt.figure()
 
