@@ -135,11 +135,32 @@ def _set_wages_weight(data):
     return data
 
 
+def _set_no_modern_service_share_heterogeneity(data):
+    data["model"]["fixed"]["xi_Sr"] = 0.5
+    return data
+
+
+def _set_low_income_shares(data):
+    data["model"]["fixed"]["xi_Ah"] = 0.4222009770484617
+    data["model"]["fixed"]["xi_Mh"] = 0.41351920932976727
+    data["model"]["fixed"]["xi_Sh"] = 0.5251019307659601
+    data["model"]["fixed"]["xi_Ar"] = 0.35886350218684315
+    data["model"]["fixed"]["xi_Mr"] = 0.35599394768067955
+    data["model"]["fixed"]["xi_Sr"] = 0.3487734856125632
+    data["model"]["fixed"]["xi_l"] = 0.4185418363758875
+    return data
+
+
 def _prepare_abs_schooling(data):
     return _set_schooling_weight(data)
 
 
+def _prepare_abs_schooling_no_modern_service_share_heterogeneity(data):
+    data = _prepare_abs_schooling(data)
+    return _set_no_modern_service_share_heterogeneity(data)
+
 def _prepare_abs_schooling_no_subsistence(data):
+    data = _prepare_abs_schooling(data)
     return _remove_subsistence(data)
 
 
@@ -168,10 +189,19 @@ def _prepare_abs_schooling_scl_subsistence_scl_wages(data):
     return _set_subsistence_weight(data)
 
 
+def _prepare_abs_schooling_with_low_income_shares(data):
+    data = _prepare_abs_schooling(data)
+    return _set_low_income_shares(data)
+
 def _prepare_no_schooling(data):
     del data["calibrator"]["targets"]["sf"]
     del data["calibrator"]["targets"]["sm"]
     return data
+
+
+def _prepare_no_schooling_no_modern_service_share_heterogeneity(data):
+    data = _prepare_no_schooling(data)
+    return _set_no_modern_service_share_heterogeneity(data)
 
 
 def _prepare_no_schooling_no_subsistence(data):
@@ -203,15 +233,14 @@ def _prepare_no_schooling_scl_subsistence_scl_wages(data):
     data = _prepare_no_schooling_scl_wages(data)
     return _set_subsistence_weight(data)
 
-def _prepare_no_share_heterogeneity(data):
-    data["model"]["fixed"]["xi_Ah"] = 0.5
-    data["model"]["fixed"]["xi_Mh"] = 0.5
-    data["model"]["fixed"]["xi_Sh"] = 0.5
-    data["model"]["fixed"]["xi_Ar"] = 0.5
-    data["model"]["fixed"]["xi_Mr"] = 0.5
-    data["model"]["fixed"]["xi_Sr"] = 0.5
-    data["model"]["fixed"]["xi_l"] = 0.5
-    return data
+
+def _prepare_no_schooling_with_low_income_shares(data):
+    data = _prepare_no_schooling(data)
+    return _set_low_income_shares(data)
+
+def _prepare_rel_schooling_no_modern_service_share_heterogeneity(data):
+    return _set_no_modern_service_share_heterogeneity(data)
+
 
 def _prepare_rel_schooling_no_subsistence(data):
     return _remove_subsistence(data)
@@ -240,29 +269,38 @@ def _prepare_rel_schooling_scl_subsistence_scl_wages(data):
     return _set_subsistence_weight(data)
 
 
+def _prepare_rel_schooling_with_low_income_shares(data):
+    return _set_low_income_shares(data)
+
+
 def setups():
     """Calibration setup hook mapping."""
     return {
         "abs-schooling": _prepare_abs_schooling,
+        "abs-schooling-no-modern-service-share-heterogeneity": _prepare_abs_schooling_no_modern_service_share_heterogeneity,
         "abs-schooling-no-subsistence": _prepare_abs_schooling_no_subsistence,
         "abs-schooling-no-subsistence-no-wages": _prepare_abs_schooling_no_subsistence_no_wages,
         "abs-schooling-no-subsistence-scl-wages": _prepare_abs_schooling_no_subsistence_scl_wages,
         "abs-schooling-no-wages": _prepare_abs_schooling_no_wages,
         "abs-schooling-scl-subsistence-scl-wages": _prepare_abs_schooling_scl_subsistence_scl_wages,
         "abs-schooling-scl-wages": _prepare_abs_schooling_scl_wages,
+        "abs-schooling-with-low-income-shares": _prepare_abs_schooling_with_low_income_shares,
         "no-schooling": _prepare_no_schooling,
+        "no-schooling-no-modern-service-share-heterogeneity": _prepare_no_schooling_no_modern_service_share_heterogeneity,
         "no-schooling-no-subsistence": _prepare_no_schooling_no_subsistence,
         "no-schooling-no-subsistence-no-wages": _prepare_no_schooling_no_subsistence_no_wages,
         "no-schooling-no-subsistence-scl-wages": _prepare_no_schooling_no_subsistence_scl_wages,
         "no-schooling-no-wages": _prepare_no_schooling_no_wages,
         "no-schooling-scl-subsistence-scl-wages": _prepare_no_schooling_scl_subsistence_scl_wages,
         "no-schooling-scl-wages": _prepare_no_schooling_scl_wages,
-        "no-share-heterogeneity": _prepare_no_share_heterogeneity,
+        "no-schooling-with-low-income-shares": _prepare_no_schooling_with_low_income_shares,
         "rel-schooling": lambda x: x,
+        "rel-schooling-no-modern-service-share-heterogeneity": _prepare_rel_schooling_no_modern_service_share_heterogeneity,
         "rel-schooling-no-subsistence": _prepare_rel_schooling_no_subsistence,
         "rel-schooling-no-subsistence-no-wages": _prepare_rel_schooling_no_subsistence_no_wages,
         "rel-schooling-no-subsistence-scl-wages": _prepare_rel_schooling_no_subsistence_scl_wages,
         "rel-schooling-no-wages": _prepare_rel_schooling_no_wages,
         "rel-schooling-scl-subsistence-scl-wages": _prepare_rel_schooling_scl_subsistence_scl_wages,
         "rel-schooling-scl-wages": _prepare_rel_schooling_scl_wages,
+        "rel-schooling-with-low-income-shares": _prepare_rel_schooling_with_low_income_shares,
     }

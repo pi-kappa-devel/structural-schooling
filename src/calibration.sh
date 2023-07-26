@@ -10,15 +10,22 @@
 #SBATCH --mail-type=ALL
 #SBATCH --account=agmisc
 
-architecture=`cat /sys/devices/cpu/caps/pmu_name`
-echo "Loading $architecture libraries."
-if [[ $architecture == "ivybridge" ]]
+cluster=`hostname`
+if [[ $cluster == "safe-gpu01" ]]
 then
+    echo "Loading SAFE configuration."
+    spack load python@3.11.2
+    spack load py-numpy@1.24.3
+    spack load py-scipy@1.10.1
+elif [[ $cluster == "fuchs.cm.cluster" ]]
+then
+    echo "Loading FUCHS configuration."
     spack load python@3.9.9%gcc@11.2.0 arch=linux-scientific7-ivybridge
     spack load py-numpy@1.22.1%gcc@11.2.0 arch=linux-scientific7-ivybridge
     spack load py-scipy@1.7.3%gcc@11.2.0 arch=linux-scientific7-ivybridge
-elif [[ $architecture == "skylake" ]]
+elif [[ $cluster =~ login0[1-2].cm.cluster ]]
 then
+    echo "Loading HHLR configuration."
     spack load python@3.9.9%gcc@11.2.0 arch=linux-scientific7-skylake_avx512
     spack load py-numpy@1.22.1%gcc@11.2.0 arch=linux-scientific7-skylake_avx512
     spack load py-scipy@1.7.3%gcc@11.2.0 arch=linux-scientific7-skylake_avx512

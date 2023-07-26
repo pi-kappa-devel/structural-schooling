@@ -13,7 +13,7 @@ import json
 from math import pi
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import brentq, fminbound
+from scipy.optimize import fminbound
 
 import calibration
 import calibration_traits
@@ -33,7 +33,7 @@ tmarkers = {"r": "", "h": "v", "l": "+"}
 markersize = 4.0
 markevery = 5
 
-main_timestamp = "20230131054225"
+main_timestamp = "20230725203501"
 main_income_group = "all"
 main_calibration_setup = "rel-schooling-scl-subsistence-scl-wages"
 
@@ -791,7 +791,6 @@ def make_production_share_figure(invariant_solution):
 def make_productivity_figure(invariant_solution):
     """Create partial equilibrium productivity figure."""
     data = copy.deepcopy(invariant_solution)
-    print(data)
 
     modern_technology_shares = {
         f"{gender}r": make_modern_share_of_productivity(data, gender, "Sr")
@@ -1284,25 +1283,26 @@ if __name__ == "__main__":
         main_calibration_setup, main_income_group, main_timestamp
     )
     main_solution = calibration.calibrate_and_save_or_load(main_config)
-    # make_production_share_figure(main_solution)
+    make_production_share_figure(main_solution)
     make_productivity_figure(main_solution)
 
     calibration_setups = calibration_traits.setups()
     solutions = {}
-    # for setup, preparation_callback in calibration_setups.items():
-    #     solutions[setup] = {}
-    #     for income_group in income_groups:
-    #         current_config = prepare_config(setup, income_group, main_timestamp)
-    #         solutions[setup][income_group] = calibration.calibrate_and_save_or_load(
-    #             current_config
-    #         )
-    #         solutions[setup][income_group] = load_controls(
-    #             solutions[setup][income_group]
-    #         )
-    # make_labor_radar_figure(solutions[setup][income_group])
-    # make_income_and_labor_errors_table(solutions[setup])
-    # make_control_income_differences_table(solutions[setup])
-    # make_calibration_table(solutions[setup])
-    # make_income_and_labor_lollipop_figure(solutions[setup])
-    # make_calibration_summary_table(solutions)
-    # make_calibration_json_file(solutions)
+    for setup, preparation_callback in calibration_setups.items():
+        print(f"Loading setup {setup}")
+        solutions[setup] = {}
+        for income_group in income_groups:
+            current_config = prepare_config(setup, income_group, main_timestamp)
+            solutions[setup][income_group] = calibration.calibrate_and_save_or_load(
+                current_config
+            )
+            solutions[setup][income_group] = load_controls(
+                solutions[setup][income_group]
+            )
+            make_labor_radar_figure(solutions[setup][income_group])
+        make_income_and_labor_errors_table(solutions[setup])
+        make_control_income_differences_table(solutions[setup])
+        make_calibration_table(solutions[setup])
+        make_income_and_labor_lollipop_figure(solutions[setup])
+    make_calibration_summary_table(solutions)
+    make_calibration_json_file(solutions)

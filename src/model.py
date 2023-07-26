@@ -1044,13 +1044,8 @@ def make_schooling_condition_ratio(model_data, index):
 def make_foc(model_data):
     """Prepare the model's first order condition vector function."""
     f1 = make_reduced_constraints(model_data, "Sh")
-    f21 = make_female_schooling_condition(model_data, "Sh")
-    f22 = make_male_schooling_condition(model_data, "Sh")
-
-    def f2(tw, sf, sm):
-        return f21(tw, sf, sm) + f22(tw, sf, sm)
-
-    f3 = make_schooling_condition_ratio(model_data, "Sh")
+    f2 = make_female_schooling_condition(model_data, "Sh")
+    f3 = make_male_schooling_condition(model_data, "Sh")
 
     def F(y):
         Lf = make_female_total_time_allocation(model_data)(y[0], y[1], y[2])
