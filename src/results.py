@@ -986,11 +986,17 @@ def load_controls(invariant_solution):
     controls["$\\gamma$"] = model.make_subsistence_consumption_share(solution["model"])(
         *solution["model"]["optimizer"]["xstar"]
     )
+    controls["$H^{f}$"] = model.make_female_traditional_production_allocation(
+        solution["model"]
+    )(*solution["model"]["optimizer"]["xstar"])
     controls["$M^{f}$"] = model.make_female_modern_production_allocation(
         solution["model"]
     )(*solution["model"]["optimizer"]["xstar"])
     controls["$\\ell^{f}$"] = model.make_female_time_allocation_control(
         solution["model"], "l"
+    )(*solution["model"]["optimizer"]["xstar"])
+    controls["$H^{m}$"] = model.make_male_traditional_production_allocation(
+        solution["model"]
     )(*solution["model"]["optimizer"]["xstar"])
     controls["$M^{m}$"] = model.make_male_modern_production_allocation(
         solution["model"]
@@ -1011,9 +1017,16 @@ def load_controls(invariant_solution):
     return solution
 
 
-def make_income_and_labor_lollipop_figure(solutions):
+def make_labor_lollipop_figure(solutions):
     """Make a lollipop plot of the labor and income shares."""
-    variables = ["$\\gamma$", "$M^{f}$", "$\\ell^{f}$", "$M^{m}$", "$\\ell^{m}$"]
+    variables = [
+        "$H^{f}$",
+        "$M^{f}$",
+        "$\\ell^{f}$",
+        "$H^{m}$",
+        "$M^{m}$",
+        "$\\ell^{m}$",
+    ]
     controls = {
         group: {control: solution["controls"][control] for control in variables}
         for group, solution in solutions.items()
@@ -1031,9 +1044,10 @@ def make_income_and_labor_lollipop_figure(solutions):
         lambda l, r: l + [None] + r,
         [
             [
-                data_subsistence_shares[k],
+                sum(v[:3]),
                 sum(v[3:-1]),
                 *v[-1:],
+                sum(data_male_labor_shares[k][:3]),
                 sum(data_male_labor_shares[k][3:-1]),
                 data_male_labor_shares[k][-1],
             ]
@@ -1319,6 +1333,6 @@ if __name__ == "__main__":
         make_income_and_labor_errors_table(solutions[setup])
         make_control_income_differences_table(solutions[setup])
         make_calibration_table(solutions[setup])
-        make_income_and_labor_lollipop_figure(solutions[setup])
+        make_labor_lollipop_figure(solutions[setup])
     make_calibration_summary_table(solutions)
     make_calibration_json_file(solutions)
