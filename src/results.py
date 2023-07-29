@@ -688,6 +688,10 @@ def make_subplot(x, female_fnc, male_fnc, line_label_mask, xlabel, ylabel):
 def make_production_share_figure(invariant_solution):
     """Create partial equilibrium production share figure."""
     data = copy.deepcopy(invariant_solution)
+    xi_Sr = data["model"]["fixed"]["xi_Sr"]
+
+    def make_vline():
+        plt.axvline(xi_Sr, color="k", linestyle="dashed", alpha=0.5, linewidth=0.5)
 
     modern_technology_shares = {
         f"{gender}r": make_modern_share_of_production_share(data, gender, "f", "Sr")
@@ -734,11 +738,13 @@ def make_production_share_figure(invariant_solution):
             linestyle=glinestyles[gender],
             label=f"${variable}^{{{gender}}}$",
         )
+    make_vline()
     plt.legend().get_frame().set_alpha(0.0)
     plt.xlabel(xlabel)
     plt.ylabel("Paid Hours Share")
 
     plt.subplot(3, 2, 2)
+    make_vline()
     make_subplot(
         x, female_schooling, male_schooling, "$s^{{{g}}}$", xlabel, "Schooling Years"
     )
@@ -756,11 +762,13 @@ def make_production_share_figure(invariant_solution):
             linestyle=glinestyles[gender],
             label=f"$\\ell^{{{gender}}}$",
         )
+    make_vline()
     plt.legend().get_frame().set_alpha(0.0)
     plt.xlabel(xlabel)
     plt.ylabel("Leisure Share")
 
     plt.subplot(3, 2, 4)
+    make_vline()
     counter = -1
     for key, fnc in traditional_technology_shares.items():
         counter += 1
@@ -779,6 +787,7 @@ def make_production_share_figure(invariant_solution):
     plt.ylabel("Traditional Hours Share")
 
     plt.subplot(3, 2, 5)
+    make_vline()
     make_subplot(
         x,
         female_allocation_share,
@@ -789,6 +798,7 @@ def make_production_share_figure(invariant_solution):
     )
 
     plt.subplot(3, 2, 6)
+    make_vline()
     make_subplot(
         x,
         female_bill,
@@ -808,6 +818,9 @@ def make_production_share_figure(invariant_solution):
 def make_productivity_figure(invariant_solution):
     """Create partial equilibrium productivity figure."""
     data = copy.deepcopy(invariant_solution)
+
+    def make_vline():
+        plt.axvline(0.0, color="k", linestyle="dashed", alpha=0.5, linewidth=0.5)
 
     modern_technology_shares = {
         f"{gender}r": make_modern_share_of_productivity(data, gender, "Sr")
@@ -834,11 +847,12 @@ def make_productivity_figure(invariant_solution):
     female_schooling = make_schooling_of_productivity(data, "f", "Sr")
     male_schooling = make_schooling_of_productivity(data, "m", "Sr")
 
-    xlabel = "$1 + \\Delta Z_{Sr}/Z_{Sr}$"
-    x = np.linspace(0.5, 1.5, 20, endpoint=True)
+    xlabel = "$\\Delta Z_{Sr}/Z_{Sr}$"
+    x = np.linspace(-0.1, 0.1, 20, endpoint=True)
     plt.figure()
 
     plt.subplot(3, 2, 1)
+    make_vline()
     counter = -1
     for key, fnc in modern_technology_shares.items():
         counter += 1
@@ -847,7 +861,7 @@ def make_productivity_figure(invariant_solution):
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
-            [fnc(v) for v in x],
+            [fnc(v) for v in 1 + x],
             color=color,
             linestyle=glinestyles[gender],
             label=f"${variable}^{{{gender}}}$",
@@ -857,16 +871,18 @@ def make_productivity_figure(invariant_solution):
     plt.ylabel("Paid Hours Share")
 
     plt.subplot(3, 2, 2)
+    make_vline()
     make_subplot(
         x,
-        female_schooling,
-        male_schooling,
+        lambda v: female_schooling(1 + v),
+        lambda v: male_schooling(1 + v),
         "$s^{{{g}}}$",
         xlabel,
         "Schooling Years",
     )
 
     plt.subplot(3, 2, 3)
+    make_vline()
     counter = -1
     for key, fnc in leisure_shares.items():
         counter += 1
@@ -875,7 +891,7 @@ def make_productivity_figure(invariant_solution):
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
-            [fnc(v) for v in x],
+            [fnc(v) for v in 1 + x],
             color=color,
             linestyle=glinestyles[gender],
             label=f"$\\ell^{{{gender}}}$",
@@ -885,6 +901,7 @@ def make_productivity_figure(invariant_solution):
     plt.ylabel("Leisure Share")
 
     plt.subplot(3, 2, 4)
+    make_vline()
     counter = -1
     for key, fnc in traditional_technology_shares.items():
         counter += 1
@@ -893,7 +910,7 @@ def make_productivity_figure(invariant_solution):
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
-            [fnc(v) for v in x],
+            [fnc(v) for v in 1 + x],
             color=color,
             linestyle=glinestyles[gender],
             label=f"${variable}^{{{gender}}}$",
@@ -903,20 +920,22 @@ def make_productivity_figure(invariant_solution):
     plt.ylabel("Traditional Hours Share")
 
     plt.subplot(3, 2, 5)
+    make_vline()
     make_subplot(
         x,
-        female_allocation_share,
-        male_allocation_share,
+        lambda v: female_allocation_share(1 + v),
+        lambda v: male_allocation_share(1 + v),
         "$L^{{{g}}}_{{Sr}}/L^{{{g}}}$",
         xlabel,
         "Labor Share",
     )
 
     plt.subplot(3, 2, 6)
+    make_vline()
     make_subplot(
         x,
-        female_bill,
-        male_bill,
+        lambda v: female_bill(1 + v),
+        lambda v: male_bill(1 + v),
         "$I^{{{g}}}_{{Sr}}$",
         xlabel,
         "Wage Bill",
@@ -925,6 +944,40 @@ def make_productivity_figure(invariant_solution):
     plt.tight_layout()
     results_path = invariant_solution["model"]["config"]["paths"]["results"]
     filename = f"{results_path}/productivity.png"
+    plt.savefig(filename, dpi=600, transparent=True)
+    plt.close()
+
+
+def make_schooling_figure(invariant_solutions, gender_index):
+    """Make a figure comparing schooling predictions with data."""
+    solutions = copy.deepcopy(invariant_solutions)
+    gender = "female" if gender_index == "f" else "male"
+    solver_index = 1 if gender_index == "f" else 2
+
+    plt.figure()
+    x = [7.6, 9.1, 10.4]
+    data = [
+        solution["model"]["config"]["parameters"][f"s{gender_index}"]
+        for income_group, solution in solutions.items()
+        if income_group != "all"
+    ]
+    preds = [
+        solution["model"]["optimizer"]["xstar"][solver_index]
+        for income_group, solution in solutions.items()
+        if income_group != "all"
+    ]
+    plt.plot(x, data, label="Data averages", color=fcolors[0], linestyle=flinestyle)
+    plt.plot(
+        x, preds, label="Model predictions", color=fcolors[1], linestyle=flinestyle
+    )
+
+    plt.legend().get_frame().set_alpha(0.0)
+    plt.xlabel("log(GDP per capita)")
+    plt.ylabel("Years of schooling")
+
+    plt.tight_layout()
+    results_path = invariant_solutions["all"]["model"]["config"]["paths"]["results"]
+    filename = f"{results_path}/schooling-{gender}-model-vs-data.png"
     plt.savefig(filename, dpi=600, transparent=True)
     plt.close()
 
@@ -1309,12 +1362,18 @@ def prepare_config(setup, group, timestamp):
 
 
 if __name__ == "__main__":
-    main_config = prepare_config(
-        main_calibration_setup, main_income_group, main_timestamp
-    )
-    main_solution = calibration.calibrate_and_save_or_load(main_config)
-    make_production_share_figure(main_solution)
-    make_productivity_figure(main_solution)
+    main_solution = {}
+    for income_group in income_groups:
+        current_config = prepare_config(
+            main_calibration_setup, income_group, main_timestamp
+        )
+        main_solution[income_group] = calibration.calibrate_and_save_or_load(
+            current_config
+        )
+    make_production_share_figure(main_solution[main_income_group])
+    make_productivity_figure(main_solution[main_income_group])
+    make_schooling_figure(main_solution, "f")
+    make_schooling_figure(main_solution, "m")
 
     calibration_setups = calibration_traits.setups()
     solutions = {}
