@@ -1180,6 +1180,78 @@ def make_income_and_labor_errors_table(solutions):
         f.write(output)
 
 
+def make_counterfactual_table(solutions):
+    """Make a table of used in counterfactual analysis."""
+
+    def get_income_group_variables(model_data):
+        sf = model_data["optimizer"]["xstar"][1]
+        sm = model_data["optimizer"]["xstar"][2]
+        tw = model_data["optimizer"]["xstar"][0]
+        mf = model.make_female_modern_production_allocation(model_data)(
+            *model_data["optimizer"]["xstar"]
+        )
+        mm = model.make_male_modern_production_allocation(model_data)(
+            *model_data["optimizer"]["xstar"]
+        )
+        ts = sf / sm
+        tm = mf / mm
+        return [sf, sm, ts, tw, tm]
+
+    def relative_difference(x1, x0):
+        return ((np.asarray(x1) - np.asarray(x0)) / np.asarray(x0)).tolist()
+
+    income_variables = {
+        income_group: get_income_group_variables(solutions[income_group]["model"])
+        for income_group in income_groups
+        if income_group != "all"
+    }
+    difference_variables = {
+        "middle": relative_difference(
+            income_variables["middle"][-3:], income_variables["low"][-3:]
+        ),
+        "high": relative_difference(
+            income_variables["high"][-3:], income_variables["middle"][-3:]
+        ),
+    }
+
+    ncol = len(income_variables["low"]) + len(difference_variables["middle"]) + 1
+    calibration_setup = solutions["all"]["model"]["config"]["setup"]
+    output = (
+        "\\\\ \\midrule\n\\multicolumn{"
+        + str(ncol)
+        + "}{c}{\\textbf{\\Cref{calib:"
+        + calibration_setup
+        + "}: "
+        + calibration_setup
+        + "}} \\\\ \\midrule\n"
+    )
+
+    for row, variables in income_variables.items():
+        output = (
+            output
+            + f"\\textbf{{{row}}} & "
+            + " & ".join(["{:>7.4f}".format(value) for value in variables])
+        )
+        if row == "low":
+            output = output + " & & & "
+        else:
+            output = (
+                output
+                + " & "
+                + " & ".join(
+                    ["{:>7.4f}".format(value) for value in difference_variables[row]]
+                )
+            )
+        if row != "high":
+            output = output + " \\\\"
+        output = output + "\n"
+
+    print(output)
+    results_path = solutions["all"]["model"]["config"]["paths"]["results"]
+    with open(f"{results_path}/counterfactual-{calibration_setup}.tex", "w") as f:
+        f.write(output)
+
+
 def make_control_income_differences_table(solutions):
     """Make a table of income differences for model controls."""
     variables = ["$\\tilde w$", "$\\tilde M$", "$\\tilde s$"]
@@ -1393,5 +1465,6 @@ if __name__ == "__main__":
         make_control_income_differences_table(solutions[setup])
         make_calibration_table(solutions[setup])
         make_labor_lollipop_figure(solutions[setup])
+        make_counterfactual_table(solutions[setup])
     make_calibration_summary_table(solutions)
     make_calibration_json_file(solutions)
