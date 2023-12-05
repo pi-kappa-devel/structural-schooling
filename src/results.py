@@ -729,7 +729,7 @@ def make_production_share_figure(invariant_solution):
     for key, fnc in modern_technology_shares.items():
         counter += 1
         gender = key[0]
-        variable = "M" if key[1] == "r" else "H"
+        variable = "M" if key[1] == "r" else "N"
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
@@ -773,7 +773,7 @@ def make_production_share_figure(invariant_solution):
     for key, fnc in traditional_technology_shares.items():
         counter += 1
         gender = key[0]
-        variable = "H"
+        variable = "N"
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
@@ -887,7 +887,7 @@ def make_productivity_figure(invariant_solution):
     for key, fnc in leisure_shares.items():
         counter += 1
         gender = key[0]
-        variable = "M" if key[1] == "r" else "H"
+        variable = "M" if key[1] == "r" else "N"
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
@@ -906,7 +906,7 @@ def make_productivity_figure(invariant_solution):
     for key, fnc in traditional_technology_shares.items():
         counter += 1
         gender = key[0]
-        variable = "H"
+        variable = "N"
         color = fcolors[0] if gender == "f" else mcolors[0]
         plt.plot(
             x,
@@ -1039,7 +1039,7 @@ def load_controls(invariant_solution):
     controls["$\\gamma$"] = model.make_subsistence_consumption_share(solution["model"])(
         *solution["model"]["optimizer"]["xstar"]
     )
-    controls["$H^{f}$"] = model.make_female_traditional_production_allocation(
+    controls["$N^{f}$"] = model.make_female_traditional_production_allocation(
         solution["model"]
     )(*solution["model"]["optimizer"]["xstar"])
     controls["$M^{f}$"] = model.make_female_modern_production_allocation(
@@ -1048,7 +1048,7 @@ def load_controls(invariant_solution):
     controls["$\\ell^{f}$"] = model.make_female_time_allocation_control(
         solution["model"], "l"
     )(*solution["model"]["optimizer"]["xstar"])
-    controls["$H^{m}$"] = model.make_male_traditional_production_allocation(
+    controls["$N^{m}$"] = model.make_male_traditional_production_allocation(
         solution["model"]
     )(*solution["model"]["optimizer"]["xstar"])
     controls["$M^{m}$"] = model.make_male_modern_production_allocation(
@@ -1073,10 +1073,10 @@ def load_controls(invariant_solution):
 def make_labor_lollipop_figure(solutions):
     """Make a lollipop plot of the labor and income shares."""
     variables = [
-        "$H^{f}$",
+        "$N^{f}$",
         "$M^{f}$",
         "$\\ell^{f}$",
-        "$H^{m}$",
+        "$N^{m}$",
         "$M^{m}$",
         "$\\ell^{m}$",
     ]
