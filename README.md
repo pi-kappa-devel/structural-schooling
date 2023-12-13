@@ -83,19 +83,27 @@ The code is distributed under the Expat [License](LICENSE).
 <div id="refs" class="references">
 
 <div id="ref-karapanagiotis2022">
+
 Pantelis Karapanagiotis and Paul Reimers. Why does the Schooling Gap Close while the Wage Gap Persists Across Country Income Comparisons? Working Paper. doi: <https://dx.doi.org/10.2139/ssrn.3691055>.
+
 </div>
 
 <div id="ref-kongsamut2001">
+  
 Piyabha Kongsamut, Sergio Rebelo, and Danyang Xie. Beyond balanced growth. The Review of Economic Studies, 68(4):869–882, 2001. doi: <https://doi.org/10.1111/1467-937X.00193>.
+
 </div>
 
 <div id="ref-ngai2017">
+
 L. Rachel Ngai and Barbara Petrongolo. Gender gaps and the rise of the service economy. American Economic Journal: Macroeconomics, 9(4):1–44, October 2017. doi: <https://doi.org/10.1257/mac.20150253>.
+
 </div>
 
 <div id="ref-restuccia2014">
+
 Diego Restuccia and Guillaume Vandenbroucke. Explaining educational attainment across countries and over time. Review of Economic Dynamics, 17(4):824–841, 2014. doi: 10.<https://doi.org/10.1016/j.red.2014.03.002>.
+
 </div>
 
 </div>
