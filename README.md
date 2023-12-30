@@ -5,7 +5,7 @@ The [structural-schooling](https://github.com/pi-kappa-devel/structural-schoolin
 
 <img src='rsc/working-life-model.png' style="max-width:70%;margin:10px 15%;"/>
 
-The model is part of the work on gender schooling differences by [Karapanagiotis & Reimers (n.d.)](#ref-karapanagiotis2022). It combines the structural change elements of the model of [Ngai & Petrongolo (2017)](#ref-ngai2017), the educational choice elements of [Restuccia & Vandenbroucke (2014)](#ref-restuccia2014), and the seminal work of [Kongsamut, Rebelo, & Xie (2001)](#ref-kongsamut2001) on non-homothetic preferences. You may find the slides from an earlier presentation of the work at the workshop "Organizations, Markets, and Policy Interventions" [here](https://talks.pikappa.eu/ompi/). The calibration results of the paper can be obtained by executing the script [calibration.sh](src/calibration.sh) (Executing the script can take a lot of time to complete).
+The model is part of the work on gender schooling differences by [Karapanagiotis & Reimers (20023)](#ref-karapanagiotis2023). It combines the structural change elements of the model of [Ngai & Petrongolo (2017)](#ref-ngai2017), the educational choice elements of [Restuccia & Vandenbroucke (2014)](#ref-restuccia2014), and the seminal work of [Kongsamut, Rebelo, & Xie (2001)](#ref-kongsamut2001) on non-homothetic preferences. You may find the slides from an earlier presentation of the work at the workshop "Organizations, Markets, and Policy Interventions" [here](https://talks.pikappa.eu/ompi/). The calibration results of the paper can be obtained by executing the script [calibration.sh](src/calibration.sh) (Executing the script can take a lot of time to complete).
 
 # Usage
 The [calibration.py](src/calibration.py) script can be called from the shell of the command line. An expected call with all options set is of the form
@@ -14,7 +14,7 @@ python calibration.py -s <calibration_setup> -g <income_group> -i <initializers_
 ```
 where 
 
-- `calibration_setup` is the (extendible) calibration setup (see sections [Out-the-box Calibration Functionality](#out-the-box-calibration-functionality) and [Extend the Calibration Functionality](#extend-the-calibration-functionality) for details),
+- `calibration_setup` is the (extendible) calibration setup (see sections [Default Calibration Functionality](#default-calibration-functionality) and [Out of the box Calibration Functionality](#out-of-the-box-calibration-functionality) for details),
 - `income_group` is a country-income group enumeration with values [low, middle, high, all],
 - `initializers_file` is a JSON file with initialing values for the calibrated free model parameters (default is [../data/initializers.json](data/initializers.json)),
 - `parameters_file` is a JSON file with values for the fixed model and calibration targets (default is [../data/parameters.json](data/parameters.json),
@@ -24,7 +24,7 @@ where
 - `adaptive_mode` is an option determining whether the nested optimization procedure uses as initializing values the calculated solution from the last calibration iteration (default is `True`), and
 - `verbose` controls the verbosity level of the logger (default is `True`).
 
-# Out-the-box Calibration Functionality
+# Default Calibration Functionality
 The following setups are already implemented in the sources of the repository.
 
 - `abs-schooling`: Schooling years are targeted.
@@ -55,12 +55,12 @@ The following setups are already implemented in the sources of the repository.
 - `rel-schooling-scl-wages`: Share of schooling life is targeted. The wage ratio error is weighted by $100$.
 - `rel-schooling-with-low-income-shares`: Share of schooling life is targeted. No variation of production shares across income.
 
-# Extend the Calibration Functionality
+# Out of the Box Calibration Functionality
 
 The calibration procedure can be easily extended to use different targets and weights. One can modify the `setups` function in [calibration_traits.py](src/calibration_traits.py) and add a custom calibration setup by inserting a key-callback pair at the dictionary the function returns. The callback is called after the default initialization of the calibration data structure. Examples of how to write a callback can be found in the same file. All functions of [calibration_traits.py](src/calibration_traits.py) using a `_prepare_` prefix in their names are the callbacks used by the out-of-the-box calibration setups.
 
 # Design
-The calibration code is written using the functional paradigm to minimize the possibility of side effects from the mathematical complications. The implemented functions follow the derived equations for the semi-analytic equilibrium solutions of the model. The implemented expressions can be found in the online appendix of [Karapanagiotis & Reimers (n.d.)](#ref-karapanagiotis2022).
+The calibration code is written using the functional paradigm to minimize the possibility of side effects from the mathematical complications. The implemented functions follow the derived equations for the semi-analytic equilibrium solutions of the model. The implemented expressions can be found in the online appendix of [Karapanagiotis & Reimers (2023)](#ref-karapanagiotis2023).
 
 # Dependencies
 
@@ -82,9 +82,9 @@ The code is distributed under the Expat [License](LICENSE).
 
 <div id="refs" class="references">
 
-<div id="ref-karapanagiotis2022">
+<div id="ref-karapanagiotis2023">
 
-Pantelis Karapanagiotis and Paul Reimers. Why does the Schooling Gap Close while the Wage Gap Persists Across Country Income Comparisons? Working Paper. doi: <https://dx.doi.org/10.2139/ssrn.3691055>.
+Pantelis Karapanagiotis and Paul Reimers. Why does the Schooling Gap Close while the Wage Gap Persists Across Country Income Comparisons? Journal Of Economic Dynamics And Control (In Press), 2023  doi: <https://doi.org/10.1016/j.jedc.2023.104805>.
 
 </div>
 
