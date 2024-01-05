@@ -84,7 +84,7 @@ The code is distributed under the Expat [License](LICENSE).
 
 <div id="ref-karapanagiotis2024">
 
-Karapanagiotis, P., & Reimers, P. (2024). Why does the schooling gap close while the wage gap persists across country income comparisons? Journal of Economic Dynamics and Control, 159, 104805. doi: <https://doi.org/10.1016/j.jedc.2023.104805>.
+Pantelis Karapanagiotis and Paul Reimers. Why does the schooling gap close while the wage gap persists across country income comparisons? Journal of Economic Dynamics and Control, 159:104805. February 2024. doi: <https://doi.org/10.1016/j.jedc.2023.104805>.
 
 </div>
 
