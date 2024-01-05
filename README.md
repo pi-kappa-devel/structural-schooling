@@ -1,11 +1,11 @@
 Gender Labor Biased Technological Change with Schooling
 =======================================================
 
-The [structural-schooling](https://github.com/pi-kappa-devel/structural-schooling) repository provides a collection of modular scripts used to calibrate an economic model of technological structural changes with households comprised of two individuals with distinct genders with endogenous schooling choices. The model is semi-analytically solvable and the optimization procedure for approximating its solutions is nested in the calibration procedure. 
+The [structural-schooling](https://github.com/pi-kappa-devel/structural-schooling) repository provides a collection of modular scripts used to calibrate an economic model of technological structural changes with households comprised of two individuals with distinct genders with endogenous schooling choices. The model is semi-analytically solvable, and the optimization procedure for approximating its solutions is nested in the calibration procedure. 
 
 <img src='rsc/working-life-model.png' style="max-width:70%;margin:10px 15%;"/>
 
-The model is part of the work on gender schooling differences by [Karapanagiotis & Reimers (20023)](#ref-karapanagiotis2023). It combines the structural change elements of the model of [Ngai & Petrongolo (2017)](#ref-ngai2017), the educational choice elements of [Restuccia & Vandenbroucke (2014)](#ref-restuccia2014), and the seminal work of [Kongsamut, Rebelo, & Xie (2001)](#ref-kongsamut2001) on non-homothetic preferences. You may find the slides from an earlier presentation of the work at the workshop "Organizations, Markets, and Policy Interventions" [here](https://talks.pikappa.eu/ompi/). The calibration results of the paper can be obtained by executing the script [calibration.sh](src/calibration.sh) (Executing the script can take a lot of time to complete).
+The model is part of the work on gender schooling differences by [Karapanagiotis & Reimers (2024)](#ref-karapanagiotis2024). It combines the structural change elements of the model of [Ngai & Petrongolo (2017)](#ref-ngai2017), the educational choice elements of [Restuccia & Vandenbroucke (2014)](#ref-restuccia2014), and the seminal work of [Kongsamut, Rebelo, & Xie (2001)](#ref-kongsamut2001) on non-homothetic preferences. You may find the slides from an earlier presentation of the work at the workshop "Organizations, Markets, and Policy Interventions" [here](https://talks.pikappa.eu/ompi/). The calibration results of the paper can be obtained by executing the script [calibration.sh](src/calibration.sh) (Executing the script can take a lot of time to complete).
 
 # Usage
 The [calibration.py](src/calibration.py) script can be called from the shell of the command line. An expected call with all options set is of the form
@@ -60,7 +60,7 @@ The following setups are already implemented in the sources of the repository.
 The calibration procedure can be easily extended to use different targets and weights. One can modify the `setups` function in [calibration_traits.py](src/calibration_traits.py) and add a custom calibration setup by inserting a key-callback pair at the dictionary the function returns. The callback is called after the default initialization of the calibration data structure. Examples of how to write a callback can be found in the same file. All functions of [calibration_traits.py](src/calibration_traits.py) using a `_prepare_` prefix in their names are the callbacks used by the out-of-the-box calibration setups.
 
 # Design
-The calibration code is written using the functional paradigm to minimize the possibility of side effects from the mathematical complications. The implemented functions follow the derived equations for the semi-analytic equilibrium solutions of the model. The implemented expressions can be found in the online appendix of [Karapanagiotis & Reimers (2023)](#ref-karapanagiotis2023).
+The calibration code is written using the functional paradigm to minimize the possibility of side effects from the mathematical complications. The implemented functions follow the derived equations for the semi-analytic equilibrium solutions of the model. The implemented expressions can be found in the online appendix of [Karapanagiotis & Reimers (2024)](#ref-karapanagiotis2024).
 
 # Dependencies
 
@@ -82,9 +82,9 @@ The code is distributed under the Expat [License](LICENSE).
 
 <div id="refs" class="references">
 
-<div id="ref-karapanagiotis2023">
+<div id="ref-karapanagiotis2024">
 
-Pantelis Karapanagiotis and Paul Reimers. Why does the Schooling Gap Close while the Wage Gap Persists Across Country Income Comparisons? Journal Of Economic Dynamics And Control (In Press), 2023  doi: <https://doi.org/10.1016/j.jedc.2023.104805>.
+Karapanagiotis, P., & Reimers, P. (2024). Why does the schooling gap close while the wage gap persists across country income comparisons? Journal of Economic Dynamics and Control, 159, 104805. doi: <10.1016/j.jedc.2023.104805>.
 
 </div>
 
