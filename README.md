@@ -55,7 +55,7 @@ The following setups are already implemented in the sources of the repository.
 - `rel-schooling-scl-wages`: Share of schooling life is targeted. The wage ratio error is weighted by $100$.
 - `rel-schooling-with-low-income-shares`: Share of schooling life is targeted. No variation of production shares across income.
 
-# Out of the Box Calibration Functionality
+# Extensible Calibration Functionality
 
 The calibration procedure can be easily extended to use different targets and weights. One can modify the `setups` function in [calibration_traits.py](src/calibration_traits.py) and add a custom calibration setup by inserting a key-callback pair at the dictionary the function returns. The callback is called after the default initialization of the calibration data structure. Examples of how to write a callback can be found in the same file. All functions of [calibration_traits.py](src/calibration_traits.py) using a `_prepare_` prefix in their names are the callbacks used by the out-of-the-box calibration setups.
 
